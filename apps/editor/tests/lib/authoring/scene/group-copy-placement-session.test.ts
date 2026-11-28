@@ -30,6 +30,8 @@ import { describe, expect, it } from 'vitest';
 import {
 	createScenePlanners,
 	groupTemplateFromCluster,
+	sceneSupportGenerationId,
+	shippedModelResourceEntry,
 	type GroupTemplate,
 	type NormalizedPlacementDefinition,
 } from '@portfolio/project-model/scene-planning';
@@ -55,7 +57,10 @@ import {
 } from '@portfolio/layout-core/wall';
 import { planCreateRegion } from '@portfolio/layout-core/room';
 import { freshCapture } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
-import { nativePlacementDefinition } from '$lib/authoring/scene/object-definition-policy';
+import {
+	catalogueModelDefinition,
+	nativePlacementDefinition,
+} from '$lib/authoring/scene/object-definition-policy';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	armGroupCopy,
@@ -72,8 +77,10 @@ import {
 	createUnitCoordinator,
 	createUnitProject,
 } from '../__fixtures__/unit-envelope-fixtures';
+import { FRAME, PROJECT_WORLD } from '$lib/authoring/adapters/scene/scene-placement-support';
 
 const PROJECT_ID = 'project-d8p-session';
+const ASSET_ID = 'paris-salon-chair';
 const REVISION: AcceptedRevision = { projectId: PROJECT_ID, revisionId: 'revision-1' };
 const SESSION = 'session-d8p';
 
@@ -257,12 +264,16 @@ type Harness = {
 	readonly releaseHeld: () => void;
 	readonly scene: () => CameraFreeSceneDocument;
 	readonly sourceContentId: () => string;
-	readonly revisionId: () => string;
+			readonly revisionId: () => string;
+		readonly bumpRevision: (revisionId: string) => void;
+		readonly resetRevision: () => void;
 };
 
 async function boot(input: {
 	readonly layout?: LayoutDocumentWallFirst;
 	readonly scene?: CameraFreeSceneDocument;
+	readonly chair?: boolean;
+	readonly dependencyLock?: ProjectEnvelope['dependencyLock'];
 }): Promise<Harness> {
 	const project = await createUnitProject({
 		id: PROJECT_ID,
@@ -270,11 +281,21 @@ async function boot(input: {
 		acceptedRevision: REVISION,
 		...(input.layout === undefined ? {} : { layout: input.layout }),
 		...(input.scene === undefined ? {} : { scene: input.scene }),
+		...(input.dependencyLock === undefined ? {} : { dependencyLock: input.dependencyLock }),
 	});
 	const admitted = await admitUnitProject(project, REVISION);
 	if (admitted.kind !== 'admitted') throw new Error(JSON.stringify(admitted.issues));
 	const definitions: readonly NormalizedPlacementDefinition[] = [
 		await nativePlacementDefinition('box'),
+		...(input.chair === true
+			? [
+					await (async () => {
+						const chair = await catalogueModelDefinition(ASSET_ID);
+						if (chair === null) throw new Error('the salon chair has no admitted definition');
+						return chair;
+					})(),
+				]
+			: []),
 	];
 	const coordinator = await createUnitCoordinator({
 		sessionEpoch: SESSION,
@@ -292,6 +313,8 @@ async function boot(input: {
 	let holder: string | null = null;
 	let epoch = 0;
 	let minted = 0;
+	// A test can present a newer accepted revision without installing one.
+	let forcedRevision: string | null = null;
 	const session = createGroupCopyPlacementSession({
 		read: () => {
 			const state = coordinator.current();
@@ -300,6 +323,7 @@ async function boot(input: {
 				sourceContentId: state.sourceContentId,
 				layout: state.source.units.layout.data,
 				scene: state.source.units.scene.data,
+				envelope: state.source,
 				definitions,
 			};
 		},
@@ -313,7 +337,7 @@ async function boot(input: {
 				message: result.message,
 			};
 		},
-		acceptedRevisionId: () => coordinator.acceptedRevision().revisionId,
+		acceptedRevisionId: () => forcedRevision ?? coordinator.acceptedRevision().revisionId,
 		acquireGesture: (request): GestureAcquisition => {
 			if (holder !== null) {
 				return { kind: 'refused', code: 'gesture-held', owner: holder };
@@ -382,16 +406,46 @@ async function boot(input: {
 		},
 		scene: () => coordinator.current().source.units.scene.data,
 		sourceContentId: () => coordinator.current().sourceContentId,
-		revisionId: () => coordinator.acceptedRevision().revisionId,
+		revisionId: () => forcedRevision ?? coordinator.acceptedRevision().revisionId,
+		bumpRevision: (revisionId) => {
+			forcedRevision = revisionId;
+		},
+		resetRevision: () => {
+			forcedRevision = null;
+		},
 	};
 }
 
+/** The pointer's any-hit point, with no visible floor support under it. */
 function pointerAt(x: number, z: number): GroupCopyPointer {
-	return { point: [x, 0, z], wallNormal: null };
+	return { point: [x, 0, z], wallNormal: null, support: null };
+}
+
+/** Place's visible, snapped support at one point. */
+function supportPointer(
+	x: number,
+	z: number,
+	sourceContentId: string,
+	elevation = 0,
+): GroupCopyPointer {
+	return {
+		point: [x, 0, z],
+		wallNormal: null,
+		support: {
+			x,
+			z,
+			elevation,
+			choice: {
+				kind: 'elevation',
+				elevation,
+				generationId: sceneSupportGenerationId(sourceContentId),
+			},
+		},
+	};
 }
 
 function wallPointer(position: Vec3, normal: Vec3 | null): GroupCopyPointer {
-	return { point: position, wallNormal: normal };
+	return { point: position, wallNormal: normal, support: null };
 }
 
 function installed(scene: CameraFreeSceneDocument, ids: readonly string[]): SceneEntity[] {
@@ -409,7 +463,11 @@ describe('group-copy placement session — support origin', () => {
 		const armed = harness.armFromCluster('cluster-pair', 'support');
 		expect(peekArmedGroupCopy(PROJECT_ID)).toBe(armed);
 
-		const begun = harness.session.begin(armed, pointerAt(4, 3), 'eval-1');
+		const begun = harness.session.begin(
+			armed,
+			supportPointer(4, 3, harness.sourceContentId()),
+			'eval-1',
+		);
 		expect(begun.kind).toBe('candidate');
 		const candidate = harness.session.candidate();
 		expect(candidate).not.toBeNull();
@@ -417,7 +475,7 @@ describe('group-copy placement session — support origin', () => {
 
 		// The captured name, with G1's collision suffix because the source holds it.
 		expect(candidate.name).toBe('Pair 2');
-		expect(candidate.origin).toEqual({ kind: 'support', worldXZ: [4, 3] });
+		expect(candidate.origin).toMatchObject({ kind: 'support', worldXZ: [4, 3] });
 		expect(candidate.yaw).toBe(0);
 		expect(candidate.anchor).toEqual([4, 0, 3]);
 		expect(candidate.mount).toBe('On the floor');
@@ -476,12 +534,16 @@ describe('group-copy placement session — support origin', () => {
 	it('stays armed and mints fresh identities for the next copy', async () => {
 		const harness = await boot({ layout: supportedLayout(), scene: sourceScene() });
 		const armed = harness.armFromCluster('cluster-pair', 'support');
-		harness.session.begin(armed, pointerAt(4, 3), 'eval-1');
+		harness.session.begin(armed, supportPointer(4, 3, harness.sourceContentId()), 'eval-1');
 		const first = harness.session.candidate()!;
 		await harness.session.commit();
 
 		// Placement stays armed after a commit.
-		const second = harness.session.begin(armed, pointerAt(5, 4), 'eval-2');
+		const second = harness.session.begin(
+			armed,
+			supportPointer(5, 4, harness.sourceContentId()),
+			'eval-2',
+		);
 		expect(second.kind).toBe('candidate');
 		const copy = harness.session.candidate()!;
 		expect(copy.clusterId).not.toBe(first.clusterId);
@@ -496,7 +558,7 @@ describe('group-copy placement session — support origin', () => {
 	it('Escape writes nothing, releases the lease and disarms', async () => {
 		const harness = await boot({ layout: supportedLayout(), scene: sourceScene() });
 		const armed = harness.armFromCluster('cluster-pair', 'support');
-		harness.session.begin(armed, pointerAt(4, 3), 'eval-1');
+		harness.session.begin(armed, supportPointer(4, 3, harness.sourceContentId()), 'eval-1');
 		expect(harness.session.proposalLive()).toBe(true);
 		harness.escape();
 		expect(harness.session.candidate()).toBeNull();
@@ -517,7 +579,12 @@ describe('group-copy placement session — support origin', () => {
 			{
 				point: [4, 0, 3],
 				wallNormal: null,
-				choice: { kind: 'elevation', elevation: 0, generationId: 'stale-generation' },
+				support: {
+					x: 4,
+					z: 3,
+					elevation: 0,
+					choice: { kind: 'elevation', elevation: 0, generationId: 'stale-generation' },
+				},
 			},
 			'eval-1',
 		);
@@ -528,15 +595,93 @@ describe('group-copy placement session — support origin', () => {
 		expect(harness.scene().entities).toHaveLength(3);
 	});
 
+	it('stands on the snapped visible support, not the raw ray hit', async () => {
+		const harness = await boot({ layout: supportedLayout(), scene: sourceScene() });
+		const armed = harness.armFromCluster('cluster-pair', 'support');
+		// The any-hit point is deliberately elsewhere: the support origin must use
+		// Place's snapped witness and its pinned elevation.
+		const outcome = harness.session.begin(
+			armed,
+			{
+				point: [6.4, 0.3, 4.9],
+				wallNormal: null,
+									support: {
+						x: 4.5,
+						z: 3.5,
+						elevation: 0,
+						choice: {
+							kind: 'elevation',
+							elevation: 0,
+							generationId: sceneSupportGenerationId(harness.sourceContentId()),
+						},
+					},
+			},
+			'eval-1',
+		);
+		expect(outcome.kind).toBe('candidate');
+		const candidate = harness.session.candidate()!;
+		expect(candidate.origin).toMatchObject({ kind: 'support', worldXZ: [4.5, 3.5] });
+		expect(harness.intents).toHaveLength(0);
+	});
+
+	it('refuses when the pointer sees no visible floor support, like Place', async () => {
+		const harness = await boot({ layout: supportedLayout(), scene: sourceScene() });
+		const armed = harness.armFromCluster('cluster-pair', 'support');
+		const outcome = harness.session.begin(armed, pointerAt(4, 3), 'eval-1');
+		expect(outcome).toEqual({
+			kind: 'refused',
+			code: 'no-support',
+			message: 'Nothing below to stand on here',
+		});
+		expect(harness.session.ghosts()).toHaveLength(0);
+		expect(harness.intents).toHaveLength(0);
+	});
+
+	it('refuses a candidate whose accepted revision changed under it', async () => {
+		const harness = await boot({ layout: supportedLayout(), scene: sourceScene() });
+		const armed = harness.armFromCluster('cluster-pair', 'support');
+		harness.session.begin(armed, supportPointer(4, 3, harness.sourceContentId()), 'eval-1');
+		expect(harness.session.candidate()).not.toBeNull();
+
+		// A newer accepted source now exists; the shown candidate still belongs to
+		// the revision it previewed.
+		harness.bumpRevision('revision-newer');
+		const refused = await harness.session.commit();
+		expect(refused).toMatchObject({ kind: 'refused', code: 'stale-revision' });
+		expect(harness.intents).toHaveLength(0);
+		expect(harness.scene().entities).toHaveLength(3);
+		expect(harness.session.candidate()).toBeNull();
+
+		// A fresh press binds the next candidate to the current revision.
+		harness.resetRevision();
+		expect(
+			harness.session.begin(
+				armed,
+				supportPointer(4, 3, harness.sourceContentId()),
+				'eval-2',
+			).kind,
+		).toBe('candidate');
+		const committed = await harness.session.commit();
+		expect(committed.kind).toBe('committed');
+		expect(harness.intents).toHaveLength(1);
+	});
+
 	it('refuses a begin while another owner holds the gesture lease', async () => {
 		const harness = await boot({ layout: supportedLayout(), scene: sourceScene() });
 		const armed = harness.armFromCluster('cluster-pair', 'support');
 		harness.hold('scene-transform');
-		const outcome = harness.session.begin(armed, pointerAt(4, 3), 'eval-1');
+		const outcome = harness.session.begin(
+			armed,
+			supportPointer(4, 3, harness.sourceContentId()),
+			'eval-1',
+		);
 		expect(outcome).toMatchObject({ kind: 'refused', code: 'gesture-held' });
 		expect(harness.intents).toHaveLength(0);
 		harness.releaseHeld();
-		expect(harness.session.begin(armed, pointerAt(4, 3), 'eval-2').kind).toBe('candidate');
+		expect(
+			harness.session.begin(armed, supportPointer(4, 3, harness.sourceContentId()), 'eval-2')
+				.kind,
+		).toBe('candidate');
 	});
 });
 
@@ -578,7 +723,10 @@ describe('group-copy placement session — overhead origin', () => {
 		// The same session recovers on a floor placement.
 		harness.escape();
 		const support = harness.armFromCluster('cluster-pair', 'support');
-		expect(harness.session.begin(support, pointerAt(4, 3), 'eval-2').kind).toBe('candidate');
+		expect(
+			harness.session.begin(support, supportPointer(4, 3, harness.sourceContentId()), 'eval-2')
+				.kind,
+		).toBe('candidate');
 		expect((await harness.session.commit()).kind).toBe('committed');
 		expect(harness.scene().entities).toHaveLength(6);
 	});
@@ -633,6 +781,101 @@ describe('group-copy placement session — wall origin', () => {
 		expect(ghosts).toHaveLength(2);
 		expect(ghosts.every((ghost) => ghost.treatment === 'refused')).toBe(true);
 		expect(harness.intents).toHaveLength(0);
+		expect(harness.scene().entities).toHaveLength(3);
+	});
+});
+
+describe('group-copy placement session — D8a grant admissibility', () => {
+	function chairTemplate(): GroupTemplate {
+		return {
+			name: 'Chair',
+			members: [
+				{
+					kind: 'model',
+					name: 'Salon chair',
+					assetId: ASSET_ID,
+					fallback: 'chair',
+					position: [0, 0, 0],
+					rotation: [0, 0, 0],
+					scale: 1,
+				},
+				{
+					kind: 'primitive',
+					primitive: 'box',
+					name: 'Block',
+					dimensions: { width: 0.4, height: 0.4, depth: 0.4 },
+					materialId: 'plaster-warm',
+					castShadow: true,
+					receiveShadow: true,
+					position: [1.2, 0.2, 0],
+					rotation: [0, 0, 0],
+					scale: 1,
+				},
+			],
+		};
+	}
+
+	it('refuses an orphan asset lock in preview and acceptance alike', async () => {
+		const shipped = shippedModelResourceEntry(ASSET_ID);
+		if (shipped === null) throw new Error('the salon chair has no shipped resource');
+		const orphan = { ...shipped.lock, contentRevision: `sha256-${'f'.repeat(64)}` };
+		const harness = await boot({
+			layout: supportedLayout(),
+			scene: sourceScene(),
+			chair: true,
+			dependencyLock: { formatVersion: 1, entries: [orphan] },
+		});
+		const chair = await catalogueModelDefinition(ASSET_ID);
+		if (chair === null) throw new Error('the salon chair has no admitted definition');
+		const template = chairTemplate();
+		const armed = harness.armTemplate(template, template.name, 'support');
+
+		const refused = harness.session.begin(
+			armed,
+			supportPointer(4, 3, harness.sourceContentId()),
+			'eval-1',
+		);
+		expect(refused).toMatchObject({ kind: 'refused', code: 'incompatible-resource' });
+		expect(harness.session.refusal()?.message).toBe(
+			'This project holds a different copy of Chair.',
+		);
+		// The composed ghost is still shown, in refusal ink, and nothing is written.
+		expect(harness.session.ghosts()).toHaveLength(2);
+		expect(harness.session.ghosts().every((ghost) => ghost.treatment === 'refused')).toBe(true);
+		expect(harness.intents).toHaveLength(0);
+
+		// The planner's own acceptance of the same copy refuses for the same reason.
+		const accepted = await harness.coordinator.accept({
+			version: 1,
+			kind: 'place-group-copy',
+			operationId: 'op-chair-orphan',
+			expectedRevision: { projectId: PROJECT_ID, revisionId: harness.revisionId() },
+			targets: [],
+			capturedInputs: [],
+			allocatedIds: [],
+			payload: {
+				kind: 'place-group-copy',
+				template,
+				name: 'Chair',
+				origin: {
+					kind: 'support',
+					worldXZ: [4, 3],
+					supportChoice: {
+						kind: 'elevation',
+						elevation: 0,
+						generationId: sceneSupportGenerationId(harness.sourceContentId()),
+					},
+				},
+				yaw: 0,
+				frame: FRAME,
+				frameReference: PROJECT_WORLD,
+				entityIds: ['chair-copy', 'block-copy'],
+				clusterId: 'cluster-chair-orphan',
+				contacts: [chair.contactMinY, -0.2],
+			},
+		} satisfies AuthoringIntent);
+		expect(accepted.kind).toBe('rejected');
+		if (accepted.kind === 'rejected') expect(accepted.reason).toBe('incompatible-resource');
 		expect(harness.scene().entities).toHaveLength(3);
 	});
 });

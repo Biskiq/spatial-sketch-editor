@@ -88,6 +88,20 @@ function groupCopyOutline(
 	return sceneCandidatePaperPreview(member, context.snapshot.domain.datumMeters, undefined, role);
 }
 
+/** Capture the asynchronous native and catalogue definitions once per mount. */
+function primePlacementDefinitions(admitted: NormalizedPlacementDefinition[]): void {
+	void Promise.all([
+		...NATIVE_PLACEMENT_PRIMITIVES.map((primitive) => nativePlacementDefinition(primitive)),
+		...admittedCatalogueModelAssets().map((asset) => catalogueModelDefinition(asset.id)),
+	]).then((definitions) => {
+		admitted.push(
+			...definitions.filter(
+				(definition): definition is NormalizedPlacementDefinition => definition !== null,
+			),
+		);
+	});
+}
+
 export const createAdapter: StageAdapterFactory = (services: StageAdapterServices) => {
 	// Every planner is registered once, and the placement planner's definitions
 	// are re-read for each preparation instead of being frozen at registration:
@@ -118,16 +132,7 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 			);
 		}
 	}
-	void Promise.all([
-		...NATIVE_PLACEMENT_PRIMITIVES.map((primitive) => nativePlacementDefinition(primitive)),
-		...admittedCatalogueModelAssets().map((asset) => catalogueModelDefinition(asset.id)),
-	]).then((definitions) => {
-		admitted.push(
-			...definitions.filter(
-				(definition): definition is NormalizedPlacementDefinition => definition !== null,
-			),
-		);
-	});
+	primePlacementDefinitions(admitted);
 
 	const adapter: StageAdapter = {
 		id: 'scene',
@@ -191,6 +196,13 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 					if (groupCopy.armed()) return groupCopy.hover(intent, adapterContext);
 					return placement.hover(intent, adapterContext);
 				},
+				// An armed group copy is a no-task tool: its ghost follows the idle
+				// pointer before the first press. The Scene adapter stays the binding
+				// that owns the surface, and the claim is a preview only.
+				idleHoverIntent(intent, adapterContext) {
+					if (profile.active()) return false;
+					return groupCopy.idleHover(intent, adapterContext);
+				},
 				selectionChanged() {
 					// A mark belongs to the subject it was drawn for; a new subject's
 					// descriptors replace it, and a stale refusal would name the old one.
@@ -249,7 +261,7 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 						const candidate = profile.ghost();
 						return candidate === null ? [] : [candidate];
 					}
-					if (groupCopy.armed()) return groupCopy.ghosts();
+					if (groupCopy.armed()) return groupCopy.ghosts(adapterContext);
 					const object = marks.ghost(adapterContext);
 					const leading: StageGhostMesh[] = [];
 					if (placement.drawing()) leading.push(...placement.drawGhosts());

@@ -296,6 +296,7 @@ export type { DefinitionMetadataFacts } from './metadata-identity';
 
 export {
 	grantShippedAssetResources,
+	shippedAssetGrantRefusal,
 	shippedAssetLockEntry,
 	shippedModelResourceEntry,
 	SHIPPED_ASSET_LOCK_DOMAIN,

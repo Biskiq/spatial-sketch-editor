@@ -19,7 +19,7 @@ export type GroupCopyRefusal = {
 export type RefusalLike = {
 	readonly code: string;
 	readonly message: string;
-	readonly diagnostics?: readonly { readonly message: string }[];
+	readonly diagnostics?: readonly (string | { readonly message: string })[];
 };
 
 /**
@@ -39,7 +39,8 @@ export function creatorWords(input: {
 	if (refusal.code === 'not-a-wall') return 'Point at a wall';
 	if (refusal.code === 'no-support') {
 		for (const diagnostic of refusal.diagnostics ?? []) {
-			const index = input.entityIds.indexOf(diagnostic.message);
+			const message = typeof diagnostic === 'string' ? diagnostic : diagnostic.message;
+			const index = input.entityIds.indexOf(message);
 			const member = index < 0 ? undefined : input.template.members[index];
 			if (member !== undefined) return `${member.name} would reach the floor here`;
 		}

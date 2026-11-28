@@ -14,7 +14,11 @@ import type {
 	SceneGroupCopyOrigin,
 	SceneSupportChoice,
 } from '@portfolio/project-model/scene-planning';
-import type { CameraFreeSceneDocument, LayoutUnitPayload } from '@portfolio/project-model/units';
+import type {
+	CameraFreeSceneDocument,
+	LayoutUnitPayload,
+	ProjectEnvelope,
+} from '@portfolio/project-model/units';
 import type {
 	GestureAcquisition,
 	StageAdapterContext,
@@ -30,14 +34,21 @@ import type { SceneWriteOutcome } from './placement';
  *
  * `point` is the ray's surface point (or its datum point when the ray reached no
  * drawn body). `wallNormal` is the wall face normal the pointer hit, and is the
- * only wall authority the session reads. `choice` is the visible floor support
- * the caller pinned, exactly as `place-object` pins it, so a changed Layout
- * refuses instead of silently re-resolving.
+ * only wall authority the session reads. `support` is the visible Place support
+ * the pointer resolved: already snapped to the Stage grid and pinned with the
+ * witness the planner will commit. The `support` origin stands on its X/Z and
+ * elevation; the `overhead` origin keeps its any-hit X/Z and reads only the
+ * choice, so the floor beneath the pointer stays the one the creator saw.
  */
 export type GroupCopyPointer = {
 	readonly point: Vec3;
 	readonly wallNormal: Vec3 | null;
-	readonly choice?: SceneSupportChoice;
+	readonly support: {
+		readonly x: number;
+		readonly z: number;
+		readonly elevation: number;
+		readonly choice: SceneSupportChoice;
+	} | null;
 };
 
 /** Everything one preview reads from the accepted source. */
@@ -47,6 +58,8 @@ export type GroupCopyPlacementSource = {
 	readonly sourceContentId: string;
 	readonly layout: LayoutUnitPayload;
 	readonly scene: CameraFreeSceneDocument;
+	/** The accepted envelope whose resources and lock the D8a grant rule reads. */
+	readonly envelope: ProjectEnvelope;
 	readonly definitions: readonly NormalizedPlacementDefinition[];
 };
 
@@ -63,6 +76,11 @@ export type GroupCopyCandidate = {
 	readonly entityIds: readonly string[];
 	readonly clusterId: string;
 	readonly contacts: readonly (number | null)[];
+	/** The accepted revision and source generation this preview was built from. */
+	readonly preparedFor: {
+		readonly revisionId: string;
+		readonly sourceContentId: string;
+	};
 	/** The composed member records, in cluster member order. */
 	readonly members: readonly SceneEntity[];
 };

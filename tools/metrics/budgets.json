@@ -1275,8 +1275,8 @@
 		{
 			"file": "apps/editor/src/lib/authoring/adapters/scene.adapter.ts",
 			"name": "createAdapter",
-			"line": 91,
-			"lines": 220,
+			"line": 105,
+			"lines": 218,
 			"reason": "The Scene adapter's one registration, composition and dispatch surface; D8p routes the armed group-copy binding beside Place, Mark, Group and Profile."
 		},
 		{

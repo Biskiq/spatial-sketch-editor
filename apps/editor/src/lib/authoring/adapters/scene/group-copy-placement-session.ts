@@ -29,12 +29,10 @@
  */
 import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import type { SceneEntity, Vec3 } from '@portfolio/project-model/scene';
-import type { GroupTemplate, SceneGroupCopyOrigin } from '@portfolio/project-model/scene-planning';
+import type { SceneGroupCopyOrigin } from '@portfolio/project-model/scene-planning';
 import {
-	GROUP_TEMPLATE_NAME_MAX_LENGTH,
-	groupTemplateMemberContact,
 	prepareGroupCopyCandidate,
-	readGroupTemplate,
+	shippedAssetGrantRefusal,
 } from '@portfolio/project-model/scene-planning';
 import type {
 	GestureAcquisition,
@@ -50,9 +48,9 @@ import type {
 	GroupCopyOutcome,
 	GroupCopyPlacementPorts,
 	GroupCopyPlacementSession,
-	GroupCopyPlacementSource,
 	GroupCopyPointer,
 } from './group-copy-contract';
+import { resolveArm, type ResolvedArm } from './group-copy-arm-resolution';
 import {
 	creatorWords,
 	pointerRefusal,
@@ -61,7 +59,6 @@ import {
 } from './group-copy-refusals';
 import { ghostForMember, modelFootprint, mountLabel } from './group-copy-presentation';
 import type { SceneWriteOutcome } from './placement';
-import { pointerDatumPoint, pointerPlaceSupport } from './pointer-support';
 import { FRAME, PROJECT_WORLD } from './scene-placement-support';
 
 export {
@@ -79,42 +76,10 @@ export type {
 	GroupCopyPlacementSource,
 	GroupCopyPointer,
 } from './group-copy-contract';
+export { groupCopyPointerAt } from './group-copy-pointer';
 
 const PLACEMENT_OWNER = 'scene-group-copy';
 const WALL_MAX_NORMAL_Y = 0.2;
-
-/**
- * The pointer facts one placement reads, from the Stage's own hit and floor
- * support. The X/Z comes from whatever the ray hit; the Y never enters a floor
- * or overhead pose, because the planner resolves that elevation itself.
- */
-export function groupCopyPointerAt(
-	context: StageAdapterContext,
-	css: readonly [number, number],
-	snapStep: number | null,
-): GroupCopyPointer | null {
-	const ray = context.ray([
-		css[0] + context.evaluation.rect.left,
-		css[1] + context.evaluation.rect.top,
-	]);
-	if (ray === null) return null;
-	const hit = context.pickScene(ray);
-	const point = hit === null ? pointerDatumPoint(context, css) : hit.worldPoint;
-	if (point === null || !point.every(Number.isFinite)) return null;
-	const support = pointerPlaceSupport(context, css, snapStep);
-	return {
-		point: [point[0], point[1], point[2]],
-		wallNormal: hit?.wallNormal ?? null,
-		...(support === null ? {} : { choice: support.choice }),
-	};
-}
-
-type ResolvedArm = {
-	readonly copy: ArmedGroupCopy;
-	readonly template: GroupTemplate;
-	readonly name: string;
-	readonly contacts: readonly (number | null)[];
-};
 
 type CapturedIdentities = {
 	readonly entityIds: readonly string[];
@@ -134,53 +99,6 @@ type SessionState = {
 	proposal: DisplayProposal | null;
 	refusal: GroupCopyRefusal | null;
 };
-
-function resolveArm(
-	copy: ArmedGroupCopy,
-	source: GroupCopyPlacementSource,
-):
-	| { readonly kind: 'resolved'; readonly arm: ResolvedArm }
-	| { readonly kind: 'refused'; readonly refusal: GroupCopyRefusal } {
-	const parsed = readGroupTemplate(copy.template);
-	if (!parsed.success) {
-		return {
-			kind: 'refused',
-			refusal: { code: 'invalid-template', message: 'This group cannot be read.', at: null },
-		};
-	}
-	const template = parsed.template;
-	const requested = copy.name.trim().length === 0 ? template.name : copy.name.trim();
-	if (requested.length === 0 || requested.length > GROUP_TEMPLATE_NAME_MAX_LENGTH) {
-		return {
-			kind: 'refused',
-			refusal: { code: 'invalid-template', message: 'This group cannot be read.', at: null },
-		};
-	}
-	const definitions = new Map(
-		source.definitions.map((definition) => [definition.definitionKey, definition]),
-	);
-	const contacts: (number | null)[] = [];
-	for (const member of template.members) {
-		const contact = groupTemplateMemberContact({ member, definitions });
-		if (contact.kind === 'rejected') {
-			return {
-				kind: 'refused',
-				refusal: {
-					code: contact.code,
-					message: creatorWords({
-						refusal: contact,
-						template,
-						entityIds: [],
-						name: requested,
-					}),
-					at: null,
-				},
-			};
-		}
-		contacts.push(contact.value);
-	}
-	return { kind: 'resolved', arm: { copy, template, name: requested, contacts } };
-}
 
 function releaseLease(state: SessionState): void {
 	if (state.lease !== null && state.lease.kind === 'granted') state.lease.lease.release();
@@ -246,9 +164,13 @@ function buildCandidate(
 	snappedStep: number | null,
 ): GroupCopyOutcome {
 	const source = state.ports.read();
+	const preparedFor = {
+		revisionId: state.ports.acceptedRevisionId(),
+		sourceContentId: source.sourceContentId,
+	};
 	const mode = arm.copy.origin;
+	const visibleSupport = mode === 'support' ? pointer.support : null;
 	const step = snappedStep !== null && snappedStep > 0 ? snappedStep : null;
-	const snapped = snapDraftingPlacement([pointer.point[0], pointer.point[2]], step);
 	let origin: SceneGroupCopyOrigin;
 	let yaw = 0;
 	if (mode === 'wall') {
@@ -262,11 +184,27 @@ function buildCandidate(
 		}
 		origin = { kind: 'wall', position: [pointer.point[0], pointer.point[1], pointer.point[2]] };
 		yaw = Math.atan2(normal[0], normal[2]);
-	} else {
+	} else if (mode === 'support') {
+		// The visible support Place would commit: already snapped and pinned to
+		// the witness the creator saw, never the raw ray hit or a re-snap.
+		if (visibleSupport === null) {
+			const words = pointerRefusal('support');
+			return refuse(state, words.code, words.message, pointer.point);
+		}
 		origin = {
-			kind: mode,
+			kind: 'support',
+			worldXZ: [visibleSupport.x, visibleSupport.z],
+			choice: visibleSupport.choice,
+		};
+	} else {
+		// Overhead keeps the deliberate any-hit X/Z: the pointer may be over a body
+		// while the face above it resolves, and only the visible floor choice is
+		// carried so the planner reads the same datum.
+		const snapped = snapDraftingPlacement([pointer.point[0], pointer.point[2]], step);
+		origin = {
+			kind: 'overhead',
 			worldXZ: [snapped.x, snapped.z],
-			...(pointer.choice === undefined ? {} : { choice: pointer.choice }),
+			...(pointer.support === null ? {} : { choice: pointer.support.choice }),
 		};
 	}
 	const identities = capturedIdentities(state, arm.template.members.length);
@@ -307,10 +245,30 @@ function buildCandidate(
 		const entity = prepared.scene.entities.find((entry) => entry.id === entityId);
 		return entity === undefined ? [] : [entity];
 	});
+	// The D8a grant rule is read here, before anything is committable. A held
+	// asset or orphan lock that acceptance refuses must refuse the preview with
+	// the same reason instead of drawing a ghost the install could never take.
+	const grantRefusal = shippedAssetGrantRefusal(source.envelope, prepared.assets);
+	if (grantRefusal !== null) {
+		const words = creatorWords({
+			refusal: grantRefusal,
+			template: arm.template,
+			entityIds: identities.entityIds,
+			name,
+		});
+		state.candidate = null;
+		state.proposal = members.length === 0 ? null : { members };
+		state.refusal = { code: grantRefusal.code, message: words, at: pointer.point };
+		return { kind: 'refused', code: grantRefusal.code, message: words };
+	}
 	const anchor: Vec3 =
 		origin.kind === 'wall'
 			? [origin.position[0], origin.position[1], origin.position[2]]
-			: [origin.worldXZ[0], prepared.support?.elevation ?? pointer.point[1], origin.worldXZ[1]];
+			: [
+					origin.worldXZ[0],
+					prepared.support?.elevation ?? visibleSupport?.elevation ?? pointer.point[1],
+					origin.worldXZ[1],
+				];
 	const next: GroupCopyCandidate = {
 		template: arm.template,
 		name,
@@ -321,6 +279,7 @@ function buildCandidate(
 		entityIds: [...identities.entityIds],
 		clusterId: identities.clusterId,
 		contacts: [...arm.contacts],
+		preparedFor,
 		members,
 	};
 	state.candidate = next;
@@ -413,7 +372,9 @@ function intentOf(state: SessionState, shown: GroupCopyCandidate): AuthoringInte
 		operationId: state.mint(),
 		expectedRevision: {
 			projectId: state.ports.read().projectId,
-			revisionId: state.ports.acceptedRevisionId(),
+			// The revision the ghost was prepared against, never a newer one read
+			// at submit time.
+			revisionId: shown.preparedFor.revisionId,
 		},
 		targets: [],
 		payload: {
@@ -477,6 +438,20 @@ async function commitCopy(state: SessionState): Promise<GroupCopyOutcome> {
 			kind: 'refused',
 			code: 'no-candidate',
 			message: 'The preview was cancelled by a reading change.',
+		};
+	}
+	// A candidate is bound to the accepted revision it previewed. If the source
+	// changed under it, refuse instead of silently re-targeting newer bytes.
+	const current = state.ports.read();
+	if (
+		shown.preparedFor.revisionId !== state.ports.acceptedRevisionId() ||
+		shown.preparedFor.sourceContentId !== current.sourceContentId
+	) {
+		withdraw(state);
+		return {
+			kind: 'refused',
+			code: 'stale-revision',
+			message: 'The Scene changed since this preview. Preview again.',
 		};
 	}
 	let outcome: SceneWriteOutcome;
