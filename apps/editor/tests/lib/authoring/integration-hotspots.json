@@ -1,12 +1,12 @@
 {
 	"src/lib/authoring/workspace/host/workspace-host.svelte.ts": {
-		"lines": 1001,
+		"lines": 1002,
 		"imports": 72,
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
 		"functions": 1,
-		"arrows": 312
+		"arrows": 313
 	},
 	"src/lib/authoring/workspace/host/wiring/project-session.ts": {
 		"lines": 38,
@@ -36,7 +36,7 @@
 		"arrows": 20
 	},
 	"src/lib/authoring/workspace/host/wiring/stage-project-epoch.ts": {
-		"lines": 43,
+		"lines": 45,
 		"imports": 1,
 		"state": 0,
 		"derived": 0,
@@ -171,22 +171,22 @@
 		"arrows": 92
 	},
 	"src/lib/authoring/stage/route/stage-project-epoch.svelte.ts": {
-		"lines": 381,
+		"lines": 390,
 		"imports": 12,
 		"state": 4,
 		"derived": 0,
 		"effects": 0,
 		"functions": 7,
-		"arrows": 18
+		"arrows": 20
 	},
 	"src/lib/authoring/stage/stage-adapter-host.ts": {
-		"lines": 329,
+		"lines": 335,
 		"imports": 12,
 		"state": 0,
 		"derived": 0,
 		"effects": 0,
 		"functions": 2,
-		"arrows": 9
+		"arrows": 10
 	},
 	"src/lib/authoring/stage/shell/StageViewportRegion.svelte": {
 		"lines": 561,

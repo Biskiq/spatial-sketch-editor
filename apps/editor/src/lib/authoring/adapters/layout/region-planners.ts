@@ -33,9 +33,11 @@ import {
 	planRotateRegion,
 	planSetRegionElevation,
 	planSetRegionFootprint,
+	planSetRegionForm,
 	planSetRegionIntendedGap,
 	planSetRegionThickness,
 	regionWallRelations,
+	type RegionFormInput,
 	type RegionPlan,
 } from '@portfolio/layout-core/room';
 import type { LayoutDocumentWallFirst, LayoutRegion } from '@portfolio/layout-core/wall';
@@ -58,6 +60,7 @@ export const LAYOUT_REGION_CREATE_KIND = 'layout-region-create';
 export const LAYOUT_REGION_MOVE_KIND = 'layout-region-move';
 export const LAYOUT_REGION_ROTATE_KIND = 'layout-region-rotate';
 export const LAYOUT_REGION_FOOTPRINT_KIND = 'layout-region-footprint';
+export const LAYOUT_REGION_FORM_KIND = 'layout-region-form';
 export const LAYOUT_REGION_ELEVATION_KIND = 'layout-region-elevation';
 export const LAYOUT_REGION_THICKNESS_KIND = 'layout-region-thickness';
 export const LAYOUT_REGION_INTENDED_GAP_KIND = 'layout-region-intended-gap';
@@ -75,7 +78,16 @@ export type RegionRole = LayoutRegion['role'];
 type Payload = Readonly<Record<string, unknown>>;
 
 const PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
-	[LAYOUT_REGION_CREATE_KIND]: ['regionId', 'role', 'footprint', 'elevation', 'thickness', 'name'],
+	[LAYOUT_REGION_CREATE_KIND]: [
+		'regionId',
+		'role',
+		'footprint',
+		'elevation',
+		'thickness',
+		'name',
+		'form',
+	],
+	[LAYOUT_REGION_FORM_KIND]: ['regionId', 'form'],
 	[LAYOUT_REGION_MOVE_KIND]: ['regionId', 'deltaX', 'deltaZ'],
 	[LAYOUT_REGION_ROTATE_KIND]: ['regionId', 'angleRadians'],
 	[LAYOUT_REGION_FOOTPRINT_KIND]: ['regionId', 'points'],
@@ -106,6 +118,7 @@ function finiteNumber(value: unknown): value is number {
 function readPayload(
 	kind: string,
 	payload: AuthoringIntent['payload'],
+	optional: readonly string[] = [],
 ): { readonly value: Payload } | PlanFailure {
 	if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
 		return { message: 'The operation payload must be an object.' };
@@ -117,7 +130,9 @@ function readPayload(
 		return { message: `The ${kind} payload cannot carry ${unknown.join(', ')}.` };
 	}
 	for (const key of expected) {
-		if (!(key in record)) return { message: `The ${kind} payload is missing "${key}".` };
+		if (!optional.includes(key) && !(key in record)) {
+			return { message: `The ${kind} payload is missing "${key}".` };
+		}
 	}
 	return { value: record };
 }
@@ -144,6 +159,35 @@ function readPoints(value: unknown): LayoutVec2[] | null {
 		points.push([entry[0], entry[1]]);
 	}
 	return points;
+}
+
+/**
+ * A form payload is the canonical `RegionFormInput` shape. Kind is checked here;
+ * every numeric gate stays in `planSetRegionForm`, so the Card, a Stage drag and
+ * a saved birth all answer to the same planner.
+ */
+function readRegionForm(value: unknown): RegionFormInput | null {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
+	const record = value as Readonly<Record<string, unknown>>;
+	const kind = record.kind;
+	if (kind === 'flat') {
+		return Object.keys(record).every((key) => key === 'kind') ? { kind: 'flat' } : null;
+	}
+	if (kind !== 'shed' && kind !== 'gable') return null;
+	const allowed =
+		kind === 'gable' ? ['kind', 'rise', 'azimuth', 'ridgeOffset'] : ['kind', 'rise', 'azimuth'];
+	if (Object.keys(record).some((key) => !allowed.includes(key))) return null;
+	if (record.rise !== undefined && !finiteNumber(record.rise)) return null;
+	if (record.azimuth !== undefined && !finiteNumber(record.azimuth)) return null;
+	if (record.ridgeOffset !== undefined && !finiteNumber(record.ridgeOffset)) return null;
+	return {
+		kind,
+		...(record.rise === undefined ? {} : { rise: record.rise }),
+		...(record.azimuth === undefined ? {} : { azimuth: record.azimuth }),
+		...(kind === 'gable' && record.ridgeOffset !== undefined
+			? { ridgeOffset: record.ridgeOffset }
+			: {}),
+	};
 }
 
 function readWallIds(value: unknown): string[] | null {
@@ -274,6 +318,7 @@ export function regionCreateIntent(input: {
 	readonly elevation: number;
 	readonly thickness: number;
 	readonly name?: string | null;
+	readonly form?: RegionFormInput;
 	readonly capture: LayoutIdCapture;
 	readonly operationId: string;
 	readonly projectId: string;
@@ -292,6 +337,7 @@ export function regionCreateIntent(input: {
 			elevation: input.elevation,
 			thickness: input.thickness,
 			name: input.name ?? null,
+			...(input.form === undefined ? {} : { form: input.form }),
 		},
 		input.capture,
 	);
@@ -393,7 +439,7 @@ function compiledNow(request: PlannerRequest<ProjectEnvelope>) {
 
 function regionCreatePlanner(): DomainPlanner<ProjectEnvelope> {
 	return layoutPlanner(LAYOUT_REGION_CREATE_KIND, (request) => {
-		const payload = readPayload(LAYOUT_REGION_CREATE_KIND, request.intent.payload);
+		const payload = readPayload(LAYOUT_REGION_CREATE_KIND, request.intent.payload, ['form']);
 		if (isFailure(payload)) return rejected('invalid-value', payload.message);
 		const birth = addressedBirth(request);
 		if (!birth.ok) return rejected('invalid-value', birth.message);
@@ -417,6 +463,10 @@ function regionCreatePlanner(): DomainPlanner<ProjectEnvelope> {
 		}
 		if (name === undefined)
 			return rejected('invalid-value', 'A region name must be a string or null.');
+		const form = record.form === undefined ? undefined : readRegionForm(record.form);
+		if (record.form !== undefined && form === null) {
+			return rejected('invalid-value', 'A region form needs a known kind and finite values.');
+		}
 		const baseline = request.snapshot.domain.source.units.layout.data;
 		const expected = regionIdFromCapture(baseline, identity.capture);
 		if (record.regionId !== expected) {
@@ -434,6 +484,7 @@ function regionCreatePlanner(): DomainPlanner<ProjectEnvelope> {
 				elevation: record.elevation,
 				thickness: record.thickness,
 				...(name === null ? {} : { name }),
+				...(form === undefined || form === null ? {} : { form }),
 			},
 		});
 		return regionPlanOutcome(request, LAYOUT_REGION_CREATE_KIND, plan, ['regions'], {
@@ -500,6 +551,26 @@ function regionFootprintPlanner(): DomainPlanner<ProjectEnvelope> {
 			points,
 		);
 		return regionPlanOutcome(request, LAYOUT_REGION_FOOTPRINT_KIND, plan, ['regions']);
+	});
+}
+
+function regionFormPlanner(): DomainPlanner<ProjectEnvelope> {
+	return layoutPlanner(LAYOUT_REGION_FORM_KIND, (request) => {
+		const payload = readPayload(LAYOUT_REGION_FORM_KIND, request.intent.payload);
+		if (isFailure(payload)) return rejected('invalid-value', payload.message);
+		const regionId = payload.value.regionId;
+		const form = readRegionForm(payload.value.form);
+		if (!opaqueId(regionId) || form === null) {
+			return rejected('invalid-value', 'A Region form needs one region and a known form.');
+		}
+		const addressed = addressedRegion(request, regionId);
+		if (!addressed.ok) return rejected('invalid-value', addressed.message);
+		const plan = planSetRegionForm(
+			request.snapshot.domain.source.units.layout.data,
+			regionId,
+			form,
+		);
+		return regionPlanOutcome(request, LAYOUT_REGION_FORM_KIND, plan, ['regions']);
 	});
 }
 
@@ -745,6 +816,7 @@ export function createRegionPlanners(): readonly DomainPlanner<ProjectEnvelope>[
 		regionMovePlanner(),
 		regionRotatePlanner(),
 		regionFootprintPlanner(),
+		regionFormPlanner(),
 		regionElevationPlanner(),
 		regionThicknessPlanner(),
 		regionIntendedGapPlanner(),

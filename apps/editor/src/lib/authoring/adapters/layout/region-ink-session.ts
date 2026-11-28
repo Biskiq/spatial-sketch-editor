@@ -1,11 +1,13 @@
 /**
- * V1c — Terrace and Roof › Flat drawing, in the one Pen.
+ * V1c/V3c — Terrace and Roof drawing, in the one Pen.
  *
  * A region uses the grammar that already exists: **Line** taps points and closes
  * the ring, **Box** names two opposite corners. Elevation is the Height Sheet's
- * height and a born region is 0.10 m thick. The draft is proposal math only: no
- * document is planned per pointer move, and the release/Enter installs one
- * captured candidate through one F4 entry.
+ * height and a born region is 0.10 m thick. A Roof is born Flat, Shed or Gable:
+ * the form travels in the same creation intent, so its defaults are the
+ * canonical `planSetRegionForm` defaults and the birth stays one F4 entry. The
+ * draft is proposal math only: no document is planned per pointer move, and the
+ * release/Enter installs one captured candidate.
  */
 import { mintLayoutIdCapture, type LayoutIdCapture } from '@portfolio/layout-core/plan';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
@@ -17,6 +19,7 @@ import type {
 } from '$lib/authoring/stage/stage-adapter-host';
 import { isStageDrag, stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
 
+import type { InkRoofForm } from './ink';
 import type { LayoutSessionPorts } from './session-ports';
 import { candidatePreviewOf } from './candidate-preview';
 import { pointerDatumPoint } from './stage-pointer';
@@ -40,6 +43,7 @@ export type RegionInkMode = 'box' | 'line';
 
 export type RegionInkSnapshot = {
 	readonly role: RegionRole;
+	readonly form: InkRoofForm;
 	readonly mode: RegionInkMode;
 	readonly points: readonly LayoutVec2[];
 	readonly elevation: number;
@@ -61,6 +65,7 @@ export function createRegionInkSession(
 		readonly publish: () => void;
 		readonly select: (sourceKind: 'region', sourceId: string) => void;
 		readonly mode: () => RegionInkMode;
+		readonly form: () => InkRoofForm;
 	},
 ) {
 	const { services, document, levelId } = ports;
@@ -90,6 +95,14 @@ export function createRegionInkSession(
 		refusal = null;
 		capture = null;
 		endLease();
+	}
+
+	function roofWords(): string {
+		return ports.form() === 'shed'
+			? 'Shed Roof'
+			: ports.form() === 'gable'
+				? 'Gable Roof'
+				: 'Flat Roof';
 	}
 
 	function elevationNow(): number {
@@ -159,7 +172,7 @@ export function createRegionInkSession(
 			refusal =
 				ports.role() === 'floor'
 					? 'A Terrace needs at least three corners.'
-					: 'A Flat Roof needs at least three corners.';
+					: `A ${roofWords()} needs at least three corners.`;
 			publish();
 			return;
 		}
@@ -177,6 +190,7 @@ export function createRegionInkSession(
 					footprint: ring,
 					elevation,
 					thickness: REGION_BIRTH_THICKNESS_METERS,
+					...(ports.role() === 'floor' ? {} : { form: { kind: ports.form() } }),
 					capture: regionCapture,
 					operationId: globalThis.crypto.randomUUID(),
 					projectId: snapshot.acceptedRevision.projectId,
@@ -325,6 +339,7 @@ export function createRegionInkSession(
 	function snapshot(): RegionInkSnapshot {
 		return {
 			role: ports.role(),
+			form: ports.form(),
 			mode: ports.mode(),
 			points: positiveRing(points),
 			elevation: elevationNow(),
@@ -345,7 +360,7 @@ export function createRegionInkSession(
 		const label =
 			ports.role() === 'floor'
 				? `Terrace · ${elevationNow().toFixed(2)} m`
-				: `Flat Roof · ${elevationNow().toFixed(2)} m underside`;
+				: `${roofWords()} · ${elevationNow().toFixed(2)} m underside`;
 		const first = ring[0]!;
 		const last = ring.at(-1)!;
 		return [

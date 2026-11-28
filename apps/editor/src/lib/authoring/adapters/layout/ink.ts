@@ -327,6 +327,9 @@ export type InkOpeningProfile = 'rectangular' | 'rounded' | 'pointed';
  */
 export type InkWallMode = 'line' | 'arc' | 'box' | 'circle';
 
+/** The three forms the existing Roof tool authors. */
+export type InkRoofForm = 'flat' | 'shed' | 'gable';
+
 /** The next Opening's palette defaults; a session remembers them. */
 export type InkOpeningOptions = {
 	readonly kind: InkOpeningKind;
@@ -393,9 +396,10 @@ export type InkPaletteSnapshot = {
 	/** The Opening candidate while that reading is armed; `null` for the Wall reading. */
 	readonly opening: InkOpeningSnapshot | null;
 	readonly room?: RoomInkSnapshot;
-	/** V1c — the Terrace/Flat Roof draft, read from the region drawing session. */
+	/** V1c/V3c — the Terrace/Roof draft, read from the region drawing session. */
 	readonly region?: {
 		readonly role: 'floor' | 'overhead';
+		readonly form: InkRoofForm;
 		readonly mode: 'box' | 'line';
 		readonly points: readonly LayoutVec2[];
 		readonly elevation: number;
@@ -430,6 +434,8 @@ export type InkController = {
 	readonly setWallMode: (mode: InkWallMode) => void;
 	/** Terrace and Flat Roof draw with the same Box/Line grammar. */
 	readonly setRegionMode: (mode: 'box' | 'line') => void;
+	/** The Roof reading's Kind; ignored by Terrace and other readings. */
+	readonly setRoofForm: (form: InkRoofForm) => void;
 	/** Remember the next Opening's kind and exact metrics. */
 	readonly setOpeningOptions: (options: InkOpeningOptions | null) => void;
 	/**

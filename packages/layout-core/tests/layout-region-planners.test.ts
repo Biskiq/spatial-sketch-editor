@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileWallFirstLayoutGeometryFresh, type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { createEmptyWallFirstLayoutDocument, planCreateWallFirstOpening, planExactWallHeight, planExactWallThickness, planWallChain, validateWallFirstLayoutDocument, type LayoutDocumentWallFirst, type LayoutWall } from '@portfolio/layout-core/wall';
-import { planCreateCircularRoom, planCreateRegion, planDuplicateRegion, planFitRegionEdgeToWall, planFitRegionToSpace, planFitRegionToWalls, planFitWallsToRegion, planMoveRegion, planRemoveRegion, planRenameRegion, planRotateRegion, planSetRegionElevation, planSetRegionFootprint, planSetRegionIntendedGap, planSetRegionThickness, regionWallPlanClass, regionWallRelations, type RegionPlan } from '@portfolio/layout-core/room';
+import { planCreateCircularRoom, planCreateRegion, planDuplicateRegion, planFitRegionEdgeToWall, planFitRegionToSpace, planFitRegionToWalls, planFitWallsToRegion, planMoveRegion, planRemoveRegion, planRenameRegion, planRotateRegion, planSetRegionElevation, planSetRegionFootprint, planSetRegionForm, planSetRegionIntendedGap, planSetRegionThickness, regionWallPlanClass, regionWallRelations, type RegionPlan } from '@portfolio/layout-core/room';
 import { captureFor, freshCapture } from './__fixtures__/layout-id-capture';
 
 const RECT: LayoutVec2[] = [[0, 0], [8, 0], [8, 6], [0, 6]];
@@ -774,5 +774,91 @@ describe('§5.3 — identity, order and metadata', () => {
 			elevation: 0.2
 		});
 		expectRejected(planFitRegionEdgeToWall(document, compile(document), regionId, wall.id), 'edge_not_parallel');
+	});
+});
+
+describe('T1 V3c — a Region is born with its form', () => {
+	const footprint: LayoutVec2[] = [[1, 1], [7, 1], [7, 5], [1, 5]];
+
+	it('births a Shed in one region-create operation with the canonical 30° rise', () => {
+		const baseline = enclosure();
+		const plan = planCreateRegion({
+			baseline,
+			capture: captureFor('v3c-shed-birth'),
+			intent: {
+				role: 'overhead',
+				footprint,
+				elevation: 2.5,
+				thickness: 0.2,
+				form: { kind: 'shed' }
+			}
+		});
+		if (plan.kind !== 'success') throw new Error(plan.rejection.message);
+		expect(plan.operation).toBe('region-create');
+		const region = regionOf(plan.document, plan.regionId);
+		expect(region.form.kind).toBe('shed');
+		if (region.form.kind !== 'shed') return;
+		// The default azimuth is the long edge (along +X), so the 6 m run rises
+		// by tan(30°) * 6 m.
+		expect(region.form.azimuth).toBeCloseTo(0, 12);
+		expect(region.form.rise).toBeCloseTo(Math.tan(Math.PI / 6) * 6, 9);
+	});
+
+	it('births a centred Gable and switches its form in one history operation', () => {
+		const baseline = enclosure();
+		const created = planCreateRegion({
+			baseline,
+			capture: captureFor('v3c-gable-birth'),
+			intent: {
+				role: 'overhead',
+				footprint,
+				elevation: 2.5,
+				thickness: 0.2,
+				form: { kind: 'gable' }
+			}
+		});
+		if (created.kind !== 'success') throw new Error(created.rejection.message);
+		const region = regionOf(created.document, created.regionId);
+		expect(region.form).toMatchObject({ kind: 'gable', ridgeOffset: 0 });
+		if (region.form.kind !== 'gable') return;
+		expect(region.form.azimuth).toBeCloseTo(Math.PI / 2, 12);
+		expect(region.form.rise).toBeCloseTo(Math.tan(Math.PI / 6) * 2, 9);
+
+		const switched = planSetRegionForm(created.document, created.regionId, { kind: 'shed' });
+		if (switched.kind !== 'success') throw new Error(switched.rejection.message);
+		expect(switched.operation).toBe('region-form');
+		expect(regionOf(switched.document, created.regionId).elevation).toBe(2.5);
+	});
+
+	it('refuses a sloped birth for a floor and an invalid rise without a candidate', () => {
+		const baseline = enclosure();
+		expectRejected(
+			planCreateRegion({
+				baseline,
+				capture: captureFor('v3c-floor-shed'),
+				intent: {
+					role: 'floor',
+					footprint,
+					elevation: 0.2,
+					thickness: 0.1,
+					form: { kind: 'shed' }
+				}
+			}),
+			'region_form_requires_overhead'
+		);
+		expectRejected(
+			planCreateRegion({
+				baseline,
+				capture: captureFor('v3c-invalid-rise'),
+				intent: {
+					role: 'overhead',
+					footprint,
+					elevation: 2.5,
+					thickness: 0.2,
+					form: { kind: 'shed', rise: 0 }
+				}
+			}),
+			'invalid_value'
+		);
 	});
 });

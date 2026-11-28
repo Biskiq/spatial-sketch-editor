@@ -397,6 +397,22 @@ export function openingRefusalWords(
 	return `That ${kind} was refused. Adjust its host or size and try again.`;
 }
 
+/**
+ * The fit's sealing refusal in the creator's own Wall label.
+ *
+ * The planner names the blocking Wall and its overrun but quotes subject ids.
+ * Those are diagnostics; the Card resolves the label before calling this, so a
+ * thin-roof refusal reads "Wall 1 would rise 0.095 m above this Roof…".
+ */
+export function regionFitRefusalWords(
+	message: string,
+	subjects: { readonly wallLabel?: string } = {},
+): string {
+	const overrun = /would rise ([0-9.]+) m above region '[^']+'/.exec(message)?.[1];
+	if (overrun === undefined) return message;
+	return `${subjects.wallLabel ?? 'This Wall'} would rise ${overrun} m above this Roof once sealed to its underside. Thicken the roof or change its shape, or edit the Wall top directly.`;
+}
+
 /** The one coincident-copy refusal sentence: preview, pointer and acceptance share it. */
 export const ROOM_DUPLICATE_COINCIDENT_MESSAGE =
 	'Move the copy clear of its source before placing it.';

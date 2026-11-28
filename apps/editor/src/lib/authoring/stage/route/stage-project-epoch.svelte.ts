@@ -87,6 +87,7 @@ export type StageProjectEpochInput = {
 		readonly openSpaceCreated?: () => ReturnType<
 			typeof createStageAdapterServices
 		>['openSpaceCreated'];
+		readonly selectTool?: () => void;
 	};
 	readonly lifecycle: () => Pick<
 		FeatureLifecycle,
@@ -244,6 +245,7 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 		const inspection = input.ports?.lightInspection?.() ?? null;
 		const studio = input.ports?.objectStudio?.() ?? null;
 		const openSpaceCreated = input.ports?.openSpaceCreated?.();
+		const selectTool = input.ports?.selectTool;
 		const mountedServices = {
 			...createdServices,
 			...(inspection === null ? {} : { lightInspection: inspection }),
@@ -253,6 +255,13 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 				: {
 						openSpaceCreated: (reference: Parameters<typeof openSpaceCreated>[0]) => {
 							if (acceptance === mounted && !tornDown) openSpaceCreated(reference);
+						},
+					}),
+			...(selectTool === undefined
+				? {}
+				: {
+						selectTool: () => {
+							if (acceptance === mounted && !tornDown) selectTool();
 						},
 					}),
 		};

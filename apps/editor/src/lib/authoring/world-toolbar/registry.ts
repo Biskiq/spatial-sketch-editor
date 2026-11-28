@@ -182,8 +182,10 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
 		icon: 'roof',
 		family: 'form',
 		stage: 'landed',
-		summary: 'Set a Flat Roof region.',
-		options: [{ label: 'Kind', options: [{ label: 'Flat' }] }],
+		summary: 'Set a Flat, Shed or Gable Roof region.',
+		options: [
+			{ label: 'Kind', options: [{ label: 'Flat' }, { label: 'Shed' }, { label: 'Gable' }] },
+		],
 	},
 	{
 		id: 'terrace',

@@ -390,9 +390,16 @@ export function createLayoutContributions({
 				};
 			}
 			if (cardSubject.sourceKind === 'region') {
+				const region = document.regions.find((entry) => entry.id === cardSubject.sourceId);
+				const formFields =
+					region?.form.kind === 'shed'
+						? ['rise', 'azimuth']
+						: region?.form.kind === 'gable'
+							? ['rise', 'azimuth', 'ridgeOffset']
+							: [];
 				return {
 					summary: 'Region fields',
-					fieldIds: ['elevation', 'thickness', 'width', 'depth'],
+					fieldIds: ['elevation', 'thickness', ...formFields, 'width', 'depth'],
 					view: { component: LayoutRegionCard, services },
 				};
 			}
@@ -433,7 +440,7 @@ export function createLayoutContributions({
 		heightTicks(): readonly StageHeightTick[] {
 			const datum = context.snapshot.domain.datumMeters;
 			const ticks: StageHeightTick[] = [{ kind: 'datum', heightMeters: 0, label: 'Floor' }];
-			// Authored regions are drawn surfaces: a Terrace's top and a Flat Roof's
+			// Authored regions are drawn surfaces: a Terrace's top and a Roof's
 			// underside are real heights a later region or a Wall can snap to.
 			for (const region of context.snapshot.domain.geometry.regions) {
 				const authored = document.regions.find((candidate) => candidate.id === region.regionId);
@@ -442,7 +449,7 @@ export function createLayoutContributions({
 				ticks.push({
 					kind: 'found',
 					heightMeters,
-					label: `${region.role === 'floor' ? 'Terrace' : 'Flat Roof'} ${authored?.name ?? region.regionId}`,
+					label: `${region.role === 'floor' ? 'Terrace' : authored?.form.kind === 'shed' ? 'Shed Roof' : authored?.form.kind === 'gable' ? 'Gable Roof' : 'Flat Roof'} ${authored?.name ?? region.regionId}`,
 				});
 			}
 			for (const object of document.objects) {

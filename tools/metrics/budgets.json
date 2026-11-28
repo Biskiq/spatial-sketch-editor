@@ -1,8 +1,8 @@
 {
 	"generatedFrom": "Budget ratchet baseline; shrink-only from here",
 	"counts": {
-		"filesOver600": 126,
-		"filesOver1000": 11,
+		"filesOver600": 127,
+		"filesOver1000": 13,
 		"filesOver1500": 0,
 		"functionsOver200": 98,
 		"exportStars": 0,
@@ -52,8 +52,8 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/layout/ink-session.ts",
-			"lines": 1049,
-			"reason": "One Ink pointer/chain state machine: press, drag, Circle and Box drafts share the live lease, capture and proposal, so the remaining orchestration stays cohesive."
+			"lines": 1062,
+			"reason": "One Ink pointer/chain state machine: press, drag, Circle, Box and Roof-form drafts share the live lease, capture and proposal, so the remaining orchestration stays cohesive."
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/scene/scene-session.ts",
@@ -72,7 +72,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/workspace/host/workspace-host.svelte.ts",
-			"lines": 1000,
+			"lines": 1001,
 			"reason": "The route's one composition root: core factories, feature entries and the lifecycle run share one mount sequence."
 		},
 		{
@@ -147,8 +147,13 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/layout/region-gesture-session.ts",
-			"lines": 857,
-			"reason": "One claimed region gesture: knob, body, turn and height share the selected region and one lease."
+			"lines": 1225,
+			"reason": "One claimed region gesture: knob, body, turn, height and the V3c section joints share the selected Region and one lease."
+		},
+		{
+			"path": "apps/editor/src/lib/authoring/adapters/layout/LayoutRegionCard.svelte",
+			"lines": 940,
+			"reason": "One selected Region Card: form fields, procedure fits and the Edit shape/Section reading share one subject, one writer and one consequence message."
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/stage/route/stage-shell-state.svelte.ts",
@@ -172,8 +177,8 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/layout/region-planners.ts",
-			"lines": 804,
-			"reason": "The region planner registry: one row per writable region fact over the same request vocabulary."
+			"lines": 876,
+			"reason": "The region planner registry: one row per writable region fact, including create-with-form, over the same request vocabulary."
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/layout/open-side-gesture-session.ts",
@@ -660,7 +665,7 @@
 			"file": "apps/editor/src/lib/authoring/workspace/host/workspace-host.svelte.ts",
 			"name": "createWorkspaceHost",
 			"line": 106,
-			"lines": 892,
+			"lines": 893,
 			"reason": "The route's one composition root: core factories, feature entries and the lifecycle run share one mount sequence."
 		},
 		{
@@ -1185,7 +1190,7 @@
 			"file": "apps/editor/src/lib/authoring/stage/route/stage-project-epoch.svelte.ts",
 			"name": "createStageProjectEpoch",
 			"line": 139,
-			"lines": 242,
+			"lines": 250,
 			"reason": "The project epoch over one replacement boundary and its cancellations."
 		},
 		{

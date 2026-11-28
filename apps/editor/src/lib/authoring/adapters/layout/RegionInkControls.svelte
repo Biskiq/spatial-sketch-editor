@@ -1,14 +1,23 @@
 <script lang="ts">
 	/**
-	 * V1c — the Terrace and Flat Roof palette. It is a reader: Box and Line are
+	 * V1c/V3c — the Terrace and Roof palette. It is a reader: Box and Line are
 	 * the same grammar the Wall reading uses, elevation is the Height Sheet's
-	 * height, and Finish/Backtrack/Cancel drive the region drawing session.
+	 * height, the Roof Kind is Flat, Shed or Gable, and Finish/Backtrack/Cancel
+	 * drive the region drawing session.
 	 */
 	import type { InkPaletteSnapshot } from './ink';
 	import { inkSurface } from './ink';
 
 	let { region }: { region: NonNullable<InkPaletteSnapshot['region']> } = $props();
-	const roleWords = $derived(region.role === 'overhead' ? 'Flat Roof' : 'Terrace');
+	const roleWords = $derived(
+		region.role === 'overhead'
+			? region.form === 'shed'
+				? 'Shed Roof'
+				: region.form === 'gable'
+					? 'Gable Roof'
+					: 'Flat Roof'
+			: 'Terrace'
+	);
 </script>
 
 <div class="region" data-region-palette>
@@ -17,6 +26,20 @@
 		<span class="height">{region.elevation.toFixed(2)} m</span>
 		<span class="thickness">{region.thickness.toFixed(2)} m thick</span>
 	</div>
+	{#if region.role === 'overhead'}
+		<div class="modes" role="radiogroup" aria-label="Roof kind">
+			{#each ['flat', 'shed', 'gable'] as const as form}
+				<button
+					type="button"
+					role="radio"
+					aria-checked={region.form === form}
+					data-roof-form={form}
+					onclick={() => inkSurface()?.controller.setRoofForm(form)}
+					>{form === 'flat' ? 'Flat' : form === 'shed' ? 'Shed' : 'Gable'}</button
+				>
+			{/each}
+		</div>
+	{/if}
 	<div class="modes" role="radiogroup" aria-label="Region shape">
 		{#each ['box', 'line'] as const as mode}
 			<button

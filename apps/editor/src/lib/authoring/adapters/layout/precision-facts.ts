@@ -262,7 +262,14 @@ export function layoutFacts(
 		return [
 			{
 				label: 'Kind',
-				value: region.role === 'overhead' ? 'Flat Roof' : 'Terrace',
+				value:
+					region.role === 'overhead'
+						? region.form.kind === 'shed'
+							? 'Shed Roof'
+							: region.form.kind === 'gable'
+								? 'Gable Roof'
+								: 'Flat Roof'
+						: 'Terrace',
 				fieldId: 'regionKind',
 			},
 			{ label: 'Name', value: region.name ?? '(unnamed)', fieldId: 'name' },

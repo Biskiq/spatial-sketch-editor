@@ -180,6 +180,12 @@ export type StageAdapterServices = {
 	readonly targetAnalysis: import('$lib/render/materials/target-analysis').TargetAnalysis;
 	/** Open the Card for a freshly installed and selected Space. */
 	readonly openSpaceCreated?: (reference: SemanticReference) => void;
+	/**
+	 * Leave the active tool for Select while keeping the selection. A Card action
+	 * that edits directly on the Stage uses this so an armed Ink task cannot keep
+	 * the pointer and suppress its handles. Absent in tests and simple hosts.
+	 */
+	readonly selectTool?: () => void;
 	/** One epoch's F4 boundary. Planner registrations last for this epoch. */
 	readonly authoring: Pick<StageAcceptanceHost, 'accept' | 'acceptedRevision'> & {
 		registerPlanner(planner: DomainPlanner<unknown>): RegistrationOutcome;

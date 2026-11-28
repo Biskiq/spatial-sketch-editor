@@ -1,15 +1,18 @@
 /**
- * V1c — direct manipulation of one authored region.
+ * V1c/V3c — direct manipulation of one authored region.
  *
  * The selected region publishes its corner knobs, its body move, its turn mark
  * and its height ray, and this session turns each one into **one** retained
- * planner candidate on release. Pointer moves only re-evaluate proposal math:
- * no document is planned, no compile runs and no history entry exists until the
- * release accepts the captured candidate. Escape restores.
+ * planner candidate on release. A sloped Roof's Edit shape instead publishes
+ * only its roof-local section: the low/high eave joints and the ridge (or the
+ * shed midpoint ＋ that inserts one). Pointer moves only re-evaluate proposal
+ * math: no document is planned, no compile runs and no history entry exists
+ * until the release accepts the captured candidate. Escape restores.
  *
- * Nothing here re-implements a gate. A footprint, a rotation, an elevation and a
- * move all go through the layout-core planners, so G1/G5 and every identity rule
- * answer exactly as they do from the Card.
+ * Nothing here re-implements a gate. A footprint, a rotation, an elevation, a
+ * move and every form joint go through the layout-core planners, so G1/G5 and
+ * every identity rule answer exactly as they do from the Card. The section is
+ * geometry from `region-section`, which reads the canonical form evaluators.
  */
 import {
 	distanceToChord,
@@ -25,10 +28,20 @@ import { selectedRegion } from './layout-subjects';
 import {
 	LAYOUT_REGION_ELEVATION_KIND,
 	LAYOUT_REGION_FOOTPRINT_KIND,
+	LAYOUT_REGION_FORM_KIND,
 	LAYOUT_REGION_MOVE_KIND,
 	LAYOUT_REGION_ROTATE_KIND,
 	regionEditIntent,
 } from './region-planners';
+import { regionShape } from '$lib/authoring/layout/region-shape-store';
+import { closeRegionShape } from './region-shape-lifecycle';
+import {
+	regionSectionOf,
+	regionSectionSegments,
+	type RegionSection,
+	type RegionSectionJointId,
+} from './region-section';
+import { regionFormProfile } from '@portfolio/layout-core/room';
 
 import {
 	axisTravelFromRay,
@@ -41,6 +54,7 @@ import {
 import { stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
+import type { LayoutRegion, LayoutRegionForm } from '@portfolio/layout-core/wall';
 
 /** The bend-point removal zone, reused verbatim for a footprint corner. */
 const REMOVE_ENTER_METERS = 0.12;
@@ -53,6 +67,7 @@ const TURN_MARK = 'layout-region-turn-mark';
 const HEIGHT_MARK = 'layout-region-height';
 const CORNER_PREFIX = 'layout-region-corner:';
 const EDGE_PREFIX = 'layout-region-edge:';
+const SECTION_PREFIX = 'layout-region-section:';
 /** A hover within this many Stage pixels of an edge offers its picker. */
 const EDGE_HOVER_CSS = 12;
 
@@ -118,7 +133,29 @@ type HeightGesture = {
 	refusal: string | null;
 };
 
-type RegionGesture = CornerGesture | MoveGesture | RotateGesture | HeightGesture;
+type ShapeJoint = 'low' | 'high' | 'ridge' | 'add';
+
+type ShapeGesture = {
+	readonly mode: 'shape';
+	readonly regionId: string;
+	readonly joint: ShapeJoint;
+	readonly evaluationId: string;
+	readonly revision: string;
+	readonly pressCss: readonly [number, number];
+	readonly lease: Extract<GestureAcquisition, { kind: 'granted' }>;
+	readonly section: RegionSection;
+	readonly startForm: LayoutRegionForm;
+	readonly startElevation: number;
+	readonly startTravel: number;
+	readonly startQ: number;
+	readonly startRidgeOffset: number;
+	readonly halfRun: number;
+	form: LayoutRegionForm;
+	elevation: number;
+	refusal: string | null;
+};
+
+type RegionGesture = CornerGesture | MoveGesture | RotateGesture | HeightGesture | ShapeGesture;
 
 function pointsOf(points: readonly LayoutVec2[]): LayoutVec2[] {
 	return points.map(([x, z]): LayoutVec2 => [x, z]);
@@ -163,6 +200,118 @@ function edgeMidpoint(points: readonly LayoutVec2[], index: number): LayoutVec2 
 	return [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2];
 }
 
+function sectionMarkId(joint: RegionSectionJointId | 'add'): string {
+	return `${SECTION_PREFIX}${joint}`;
+}
+
+function formSignature(form: LayoutRegionForm): string {
+	return JSON.stringify(form);
+}
+
+function qOfPlan(azimuth: number, point: readonly [number, number]): number {
+	return point[0] * Math.cos(azimuth) + point[1] * Math.sin(azimuth);
+}
+
+/** A live Shape candidate, or the accepted Region when no joint is held. */
+function shapeCandidate(region: LayoutRegion, gesture: RegionGesture | null): LayoutRegion {
+	if (gesture?.mode !== 'shape' || gesture.regionId !== region.id) return region;
+	return { ...region, elevation: gesture.elevation, form: gesture.form };
+}
+
+function sectionMarks(
+	section: RegionSection,
+	region: LayoutRegion,
+	gesture: RegionGesture | null,
+): StageHandleDescriptor[] {
+	const live = gesture?.mode === 'shape' ? gesture : null;
+	const candidate = shapeCandidate(region, gesture);
+	const marks: StageHandleDescriptor[] = [];
+	const eaveVerb = section.form === 'shed' ? 'Eave elevation' : 'Eave';
+	marks.push({
+		id: sectionMarkId('low'),
+		kind: 'point',
+		role: 'edit',
+		anchor: [section.low.point[0], section.low.height, section.low.point[1]],
+		axis: [1, 0, 0],
+		draw: { pointRadius: live?.joint === 'low' ? 6.8 : 5.2, bend: true },
+		label: section.low.label,
+		fact: 'elevation',
+		verb: eaveVerb,
+		planner: LAYOUT_REGION_FORM_KIND,
+		value: `Elevation ${candidate.elevation.toFixed(3)} m`,
+		refusal: live?.joint === 'low' ? live.refusal : null,
+	});
+	if (section.ridge !== null) {
+		marks.push({
+			id: sectionMarkId('ridge'),
+			kind: 'point',
+			role: 'edit',
+			anchor: [section.ridge.point[0], section.ridge.height, section.ridge.point[1]],
+			axis: [0, 1, 0],
+			draw: { pointRadius: live?.joint === 'ridge' ? 7 : 5.4, bend: true },
+			label: 'Ridge',
+			fact: 'ridge',
+			verb: 'Ridge',
+			planner: LAYOUT_REGION_FORM_KIND,
+			value:
+				candidate.form.kind === 'gable'
+					? `Rise ${candidate.form.rise.toFixed(3)} m · offset ${candidate.form.ridgeOffset.toFixed(3)} m`
+					: 'Ridge',
+			refusal: live?.joint === 'ridge' ? live.refusal : null,
+		});
+	} else if (section.midpoint !== null) {
+		marks.push({
+			id: sectionMarkId('add'),
+			kind: 'point',
+			role: 'edit',
+			anchor: [section.midpoint.point[0], section.midpoint.height, section.midpoint.point[1]],
+			axis: [1, 0, 0],
+			draw: { pointRadius: 5.2, cross: true },
+			label: 'Add ridge',
+			fact: 'ridge',
+			verb: 'Add ridge',
+			planner: LAYOUT_REGION_FORM_KIND,
+			value: 'Press to insert a Gable ridge',
+			refusal: live?.joint === 'add' ? live.refusal : null,
+		});
+	}
+	marks.push({
+		id: sectionMarkId('high'),
+		kind: 'point',
+		role: 'edit',
+		anchor: [section.high.point[0], section.high.height, section.high.point[1]],
+		axis: [1, 0, 0],
+		draw: { pointRadius: live?.joint === 'high' ? 6.8 : 5.2, bend: true },
+		label: section.high.label,
+		fact: section.form === 'shed' ? 'rise' : 'elevation',
+		verb: section.form === 'shed' ? 'Rise' : 'Eave',
+		planner: LAYOUT_REGION_FORM_KIND,
+		value:
+			section.form === 'shed'
+				? `Rise ${candidate.form.kind === 'shed' ? candidate.form.rise.toFixed(3) : '0.000'} m`
+				: `Elevation ${candidate.elevation.toFixed(3)} m`,
+		refusal: live?.joint === 'high' ? live.refusal : null,
+	});
+	return marks;
+}
+
+/** The visible section: underside, top and end caps, with its joints named. */
+function sectionPreview(section: RegionSection): StageCandidatePreview {
+	const profile = [section.low, ...(section.ridge === null ? [] : [section.ridge]), section.high];
+	return candidatePreviewOf({
+		id: 'layout-region-section-candidate',
+		role: 'affected',
+		geometry: {
+			polygons: [],
+			segments: regionSectionSegments(section),
+		},
+		labels: profile.map((joint) => ({
+			world: [joint.point[0], joint.height + 0.12, joint.point[1]],
+			text: joint.label,
+		})),
+	});
+}
+
 export function createRegionGestureSession(
 	ports: LayoutManipulationPorts & { readonly edgePick: RegionEdgePick },
 ) {
@@ -196,6 +345,10 @@ export function createRegionGestureSession(
 		const { region } = selected;
 		const y = ctx.snapshot.domain.datumMeters;
 		const live = gesture?.regionId === region.id ? gesture : null;
+		if (regionShape.isActive(region.id) && region.form.kind !== 'flat') {
+			const section = regionSectionOf(shapeCandidate(region, live), y);
+			return section === null ? [] : sectionMarks(section, region, live);
+		}
 		const points =
 			live?.mode === 'corner'
 				? live.points
@@ -297,6 +450,10 @@ export function createRegionGestureSession(
 			const selected = selectedRegion(document, ctx);
 			if (selected === null) return false;
 			const { region } = selected;
+			if (regionShape.isActive(region.id)) {
+				const joint = sectionJointOf(intent.handleId);
+				return joint === null ? false : beginShape(intent, ctx, region.id, joint);
+			}
 			if (intent.handleId?.startsWith(CORNER_PREFIX)) {
 				const index = Number(intent.handleId.slice(CORNER_PREFIX.length));
 				return beginCorner(intent, ctx, region.id, index);
@@ -332,6 +489,7 @@ export function createRegionGestureSession(
 			if (current.mode === 'corner') moveCorner(current, ctx, intent);
 			else if (current.mode === 'move') moveBody(current, ctx, intent);
 			else if (current.mode === 'rotate') rotateBody(current, ctx, intent);
+			else if (current.mode === 'shape') moveShape(current, ctx, intent);
 			else moveHeight(current, ctx, intent);
 			services.stage.notifySurfaceChange();
 			return true;
@@ -346,6 +504,9 @@ export function createRegionGestureSession(
 	function beginBody(intent: StagePointerIntent, ctx: StageAdapterContext): boolean {
 		const selected = selectedRegion(document, ctx);
 		if (selected === null) return false;
+		// While Edit shape is open the section is the only body: a press on the
+		// footprint must not move the roof out from under the joints.
+		if (regionShape.isActive(selected.region.id)) return false;
 		return beginMove(intent, ctx, selected.region.id);
 	}
 
@@ -437,6 +598,7 @@ export function createRegionGestureSession(
 		if (services.stage.session.task() !== null || edgeHover === null) return [];
 		const selected = selectedRegion(document, ctx);
 		if (selected === null || selected.region.id !== edgeHover.regionId) return [];
+		if (regionShape.isActive(selected.region.id)) return [];
 		const index = edgeHover.index;
 		if (index < 0 || index >= selected.region.footprint.points.length) return [];
 		const midpoint = edgeMidpoint(selected.region.footprint.points, index);
@@ -472,7 +634,7 @@ export function createRegionGestureSession(
 			return false;
 		}
 		const selected = selectedRegion(document, ctx);
-		if (selected === null) {
+		if (selected === null || regionShape.isActive(selected.region.id)) {
 			edgeHover = null;
 			return false;
 		}
@@ -585,6 +747,151 @@ export function createRegionGestureSession(
 		};
 		services.stage.notifySurfaceChange();
 		return true;
+	}
+
+	function sectionJointOf(handleId: string | undefined): ShapeJoint | null {
+		if (handleId === undefined || !handleId.startsWith(SECTION_PREFIX)) return null;
+		const joint = handleId.slice(SECTION_PREFIX.length);
+		return joint === 'low' || joint === 'high' || joint === 'ridge' || joint === 'add'
+			? joint
+			: null;
+	}
+
+	function beginShape(
+		intent: StagePointerIntent,
+		ctx: StageAdapterContext,
+		regionId: string,
+		joint: ShapeJoint,
+	): boolean {
+		const selected = selectedRegion(document, ctx);
+		if (selected === null || selected.region.id !== regionId) return false;
+		if (selected.region.form.kind === 'flat') return false;
+		const floorElevation = ctx.snapshot.domain.datumMeters;
+		const section = regionSectionOf(selected.region, floorElevation);
+		if (section === null) return false;
+		const anchor =
+			joint === 'low'
+				? section.low
+				: joint === 'high'
+					? section.high
+					: joint === 'ridge'
+						? section.ridge
+						: section.midpoint;
+		if (anchor === null) return false;
+		const ray = pointerViewportRay(ctx, intent.css);
+		if (ray === null) return false;
+		const travel = axisTravelFromRay({
+			origin: [anchor.point[0], anchor.height, anchor.point[1]],
+			direction: [0, 1, 0],
+			rayOrigin: ray.origin,
+			rayDirection: ray.direction,
+		});
+		const plan = pointerWorkingPlanePoint(ctx, intent.css, anchor.height);
+		if (travel === null) return false;
+		const lease = leaseFor('layout-region-section', intent);
+		if (lease === null) return false;
+		const source = selected.region.form;
+		const startForm: LayoutRegionForm =
+			joint === 'add' && source.kind === 'shed'
+				? { kind: 'gable', rise: source.rise, azimuth: source.azimuth, ridgeOffset: 0 }
+				: source;
+		ports.settleRefusal(null);
+		gesture = {
+			mode: 'shape',
+			regionId,
+			joint,
+			evaluationId: intent.evaluationId,
+			revision: services.authoring.acceptedRevision().revisionId,
+			pressCss: intent.css,
+			lease,
+			section,
+			startForm,
+			startElevation: selected.region.elevation,
+			startTravel: travel,
+			startQ: plan === null ? 0 : qOfPlan(section.azimuth, plan),
+			startRidgeOffset: startForm.kind === 'gable' ? startForm.ridgeOffset : 0,
+			halfRun: (() => {
+				const profile = regionFormProfile(startForm, selected.region.footprint.points);
+				return profile === null ? 0 : (profile.qMax - profile.qMin) / 2;
+			})(),
+			form: startForm,
+			elevation: selected.region.elevation,
+			refusal: null,
+		};
+		services.stage.notifySurfaceChange();
+		return true;
+	}
+
+	function moveShape(
+		current: ShapeGesture,
+		ctx: StageAdapterContext,
+		intent: StagePointerIntent,
+	): void {
+		const ray = pointerViewportRay(ctx, intent.css);
+		if (ray === null) return;
+		const anchor =
+			current.joint === 'low'
+				? current.section.low
+				: current.joint === 'high'
+					? current.section.high
+					: current.joint === 'ridge'
+						? current.section.ridge
+						: current.section.midpoint;
+		if (anchor === null) return;
+		const travel = axisTravelFromRay({
+			origin: [anchor.point[0], anchor.height, anchor.point[1]],
+			direction: [0, 1, 0],
+			rayOrigin: ray.origin,
+			rayDirection: ray.direction,
+		});
+		if (travel === null) return;
+		const dy = travel - current.startTravel;
+		if (current.joint === 'low') {
+			current.elevation = Number((current.startElevation + dy).toFixed(9));
+			return;
+		}
+		if (current.joint === 'high') {
+			if (current.startForm.kind === 'shed') {
+				current.form = {
+					...current.startForm,
+					rise: Math.max(1e-6, current.startForm.rise + dy),
+				};
+			} else {
+				current.elevation = Number((current.startElevation + dy).toFixed(9));
+			}
+			return;
+		}
+		// The ridge (or the shed midpoint that becomes one) moves vertically with
+		// rise and along the uphill direction with ridge offset. The plan ray is
+		// measured on the ridge's *new* height, so a purely vertical drag keeps q
+		// fixed instead of coupling rise into an offset.
+		const plan = pointerWorkingPlanePoint(ctx, intent.css, anchor.height + dy);
+		const dq = plan === null ? 0 : qOfPlan(current.section.azimuth, plan) - current.startQ;
+		const startRise = current.startForm.kind === 'flat' ? 0 : current.startForm.rise;
+		const rise = startRise + dy;
+		const ridgeOffset = current.startRidgeOffset + dq;
+		const startAzimuth = current.startForm.kind === 'flat' ? 0 : current.startForm.azimuth;
+		// The approved grammar removes the ridge when it reaches either eave: one
+		// face vanishes and the other is a shed; at eave height the whole roof is
+		// flat. The thresholds only make the last few pixels reachable.
+		if (rise <= 0.02) {
+			current.form = { kind: 'flat' };
+			return;
+		}
+		if (current.halfRun > 0 && Math.abs(ridgeOffset) >= current.halfRun - 1e-6) {
+			current.form = {
+				kind: 'shed',
+				azimuth: ridgeOffset >= 0 ? startAzimuth : startAzimuth + Math.PI,
+				rise,
+			};
+			return;
+		}
+		current.form = {
+			kind: 'gable',
+			azimuth: startAzimuth,
+			rise: Math.max(1e-6, rise),
+			ridgeOffset: Number(ridgeOffset.toFixed(9)),
+		};
 	}
 
 	function moveBody(
@@ -712,6 +1019,45 @@ export function createRegionGestureSession(
 			);
 			return;
 		}
+		if (current.mode === 'shape') {
+			// A shed's ＋ is a click: the Gable it inserts exists even without travel.
+			if (current.joint === 'add') {
+				await acceptEdit(
+					LAYOUT_REGION_FORM_KIND,
+					current.regionId,
+					{ form: current.form },
+					current.revision,
+				);
+				return;
+			}
+			if (
+				current.joint === 'low' ||
+				(current.joint === 'high' && current.startForm.kind === 'gable')
+			) {
+				if (Math.abs(current.elevation - current.startElevation) <= 1e-9) return;
+				await acceptEdit(
+					LAYOUT_REGION_ELEVATION_KIND,
+					current.regionId,
+					{ elevation: current.elevation },
+					current.revision,
+				);
+				return;
+			}
+			if (formSignature(current.form) === formSignature(current.startForm)) return;
+			const installed = await acceptEdit(
+				LAYOUT_REGION_FORM_KIND,
+				current.regionId,
+				{ form: current.form },
+				current.revision,
+			);
+			// A ridge dragged all the way down leaves a Flat roof, which has no
+			// section. End the session now; the Card's form switch uses the same
+			// lifecycle when it writes Flat from its own control.
+			if (installed && current.form.kind === 'flat' && closeRegionShape()) {
+				services.stage.notifySurfaceChange();
+			}
+			return;
+		}
 		if (presenceDrift(current)) {
 			await acceptEdit(
 				LAYOUT_REGION_ELEVATION_KIND,
@@ -749,9 +1095,9 @@ export function createRegionGestureSession(
 		regionId: string,
 		payload: ReturnType<typeof regionEditIntent>['payload'],
 		revision: string,
-	): Promise<void> {
+	): Promise<boolean> {
 		const snapshot = services.stage.snapshot();
-		if (stageUnitRevision(snapshot, 'layout') !== contentRevision) return;
+		if (stageUnitRevision(snapshot, 'layout') !== contentRevision) return false;
 		const outcome = await services.authoring.accept(
 			regionEditIntent({
 				kind,
@@ -771,6 +1117,7 @@ export function createRegionGestureSession(
 			}
 		}
 		services.stage.notifySurfaceChange();
+		return outcome.kind === 'installed';
 	}
 
 	function settleRefusal(regionId: string, text: string): void {
@@ -788,20 +1135,41 @@ export function createRegionGestureSession(
 	}
 
 	function key(intent: StageKeyboardIntent): boolean {
-		if (gesture === null || intent.kind !== 'cancel') return false;
-		endGesture();
-		services.stage.notifySurfaceChange();
-		return true;
+		if (intent.kind !== 'cancel') return false;
+		if (gesture !== null) {
+			endGesture();
+			services.stage.notifySurfaceChange();
+			return true;
+		}
+		if (regionShape.current() !== null) {
+			regionShape.close();
+			services.stage.notifySurfaceChange();
+			return true;
+		}
+		return false;
 	}
 
 	/** The live proposal: the candidate footprint, with its adopted snap named. */
 	function previews(_ctx: StageAdapterContext, y: number): readonly StageCandidatePreview[] | null {
 		const current = gesture;
-		// Null, not empty: an idle region gesture must fall through to Ink's own
-		// candidate instead of suppressing every other preview source.
-		if (current === null) return null;
+		if (current === null) {
+			const selected = selectedRegion(document, _ctx);
+			if (
+				selected === null ||
+				!regionShape.isActive(selected.region.id) ||
+				selected.region.form.kind === 'flat'
+			) {
+				return null;
+			}
+			const section = regionSectionOf(selected.region, y);
+			return section === null ? null : [sectionPreview(section)];
+		}
 		const selected = document.regions.find((region) => region.id === current.regionId);
 		if (selected === undefined) return null;
+		if (current.mode === 'shape') {
+			const section = regionSectionOf(shapeCandidate(selected, current), y);
+			return section === null ? [] : [sectionPreview(section)];
+		}
 		const { world } = previewCoordinates(y);
 		const elevation = y + (current.mode === 'height' ? current.elevation : selected.elevation);
 		let points: readonly LayoutVec2[] = selected.footprint.points;

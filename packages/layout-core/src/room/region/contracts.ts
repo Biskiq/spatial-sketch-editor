@@ -71,6 +71,12 @@ export type RegionCreateIntent = {
 	readonly elevation: number;
 	readonly thickness: number;
 	readonly name?: string;
+	/**
+	 * The form a Region is born with. Omitted means flat; a sloped form uses the
+	 * same deterministic defaults as `planSetRegionForm` and is one creation
+	 * operation, not a birth followed by a second history entry.
+	 */
+	readonly form?: RegionFormInput;
 };
 
 /**

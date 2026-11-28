@@ -9,8 +9,9 @@ import {
 } from '../../plan/id-capture';
 import { regionWallRelations } from '../region-relations';
 import type { LayoutDocumentWallFirst, LayoutRegion } from '../../wall/types';
-import type { RegionCreateIntent, RegionPlan } from './contracts';
+import type { RegionCreateIntent, RegionFormInput, RegionPlan } from './contracts';
 import { normalizeRegionAzimuth } from './form';
+import { regionFormInputIssue, resolveRegionForm } from './form-edit';
 import {
 	copyPoints,
 	finalizeRegionCandidate,
@@ -70,9 +71,18 @@ export function planCreateRegion(input: {
 	) {
 		return reject('invalid_value', 'Region name cannot be empty');
 	}
+	const formInput: RegionFormInput = intent.form ?? { kind: 'flat' };
+	const formIssue = regionFormInputIssue(formInput);
+	if (formIssue !== null) return reject('invalid_value', formIssue);
+	if (formInput.kind !== 'flat' && intent.role !== 'overhead') {
+		return reject(
+			'region_form_requires_overhead',
+			'A sloped Region form requires an overhead role',
+		);
+	}
 	try {
 		const id = allocateCapturedId(layoutIds(baseline), 'region', capture);
-		const region: LayoutRegion = {
+		const baseRegion: LayoutRegion = {
 			id,
 			role: intent.role,
 			footprint: { kind: 'polygon', points: copyPoints(intent.footprint) },
@@ -82,6 +92,14 @@ export function planCreateRegion(input: {
 			intendedGaps: [],
 			...(intent.name === undefined ? {} : { name: intent.name.trim() }),
 		};
+		const form = resolveRegionForm(baseRegion, formInput);
+		if (form === null) {
+			return reject(
+				'region_form_projection_degenerate',
+				'Region form has no usable projected extent',
+			);
+		}
+		const region: LayoutRegion = formInput.kind === 'flat' ? baseRegion : { ...baseRegion, form };
 		return finalizeRegionCandidate(
 			{ ...baseline, regions: [...baseline.regions, region] },
 			'region-create',
