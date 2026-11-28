@@ -34,6 +34,10 @@ blocking Wall and its overrun instead of quoting subject ids.
 | ![J8 fit walls meets](11-j8-fit-walls-meets.png) | Fit walls to roof fits Wall 1, Wall 2, Wall 3 and Wall 4. All four relation rows read **Meets**. |
 | ![J8 all four meets in 3D](12-j8-3d-meets.png) | The same J8 result in 3D: level eave Walls and gable end Walls under the roof, with all four relations **Meets**. |
 | ![Thin roof refusal](13-thin-roof-refusal.png) | With 0.02 m Roof thickness, Fit walls to roof refuses atomically: “Wall 1 would rise 0.095 m above this Roof once sealed to its underside. Thicken the roof or change its shape, or edit the Wall top directly.” No history entry is written. |
+| ![U-shaped oblique section](14-u-oblique-section.png) | A U-shaped Gable footprint drawn with Line taps, rise 0.6 m and azimuth 30°. Edit shape → Section frames one covered ridge interval through the left leg; the notch is not bridged by section geometry. The regression also covers axis-aligned ridge intervals. |
+| ![Ridge collapse restores 3D](15-ridge-collapse-flat-restored.png) | Dragging the ridge down past its eave height accepts a **Flat Roof**. Edit shape closes automatically (no Done button remains), the ordinary corner/turn/elevation marks return, and the camera is back at the pre-Section 3D standpoint. |
+| ![Corner edit after collapse](16-u-corner-after-collapse.png) | The first ordinary corner drag after the collapse is accepted immediately; the Card area changes from 33.43 to 28.17 m². No Escape or extra click is needed to leave the stale shape session. |
+| ![Card Flat restores 3D](17-card-flat-restored.png) | The same lifecycle through the Card: Undo restored the Gable, Edit shape → Section was opened again, then the Card's **Flat** control was chosen. Edit shape closes, ordinary marks return, and the camera is restored. |
 
 Cancellation: a Gable Roof draft was dragged into preview and Escape was pressed
 before release. No Region was created, no history entry appeared (the header still
@@ -43,6 +47,22 @@ Undo/Redo: the asymmetric ridge gesture was one entry. Undo restored rise 1.5 m 
 ridge offset 0.75 m exactly; Redo restored 1.94 m and 0.48 m. Form switches were
 likewise one entry each: after the Flat switch, Undo restored the previous Gable,
 and Redo restored Flat.
+
+## Review follow-up — concave Section and Flat lifecycle
+
+The section clip now reads the footprint's covered line stretches, not just the
+first and last edge hit. It chooses the longest covered ridge stretch, then the
+one covered uphill interval containing that station, so a concave footprint's
+void cannot become a drawn section. A U-shaped footprint is covered both with an
+axis-aligned ridge and with an oblique 30° section; every sampled section station
+is inside the footprint.
+
+Edit shape now has one lifecycle owner. A Flat form (from a collapsed ridge or a
+Card Kind switch) closes the session and returns the Camera only when the Section
+face is the live reading. The same path runs from the Stage shape release and
+from the Card effect, so the ordinary corner/body/turn marks are available on the
+next surface refresh. The before/after screenshots above show the restored 3D
+viewpoint and an accepted corner drag after the collapse.
 
 ## Automated checks
 
@@ -54,13 +74,15 @@ npm run check               # 0 errors, 6 pre-existing Svelte warnings
 npm run lint:ci             # pass
 npm run build:editor        # pass
 npx vitest run apps/editor/tests/lib/authoring/stage/layout-region-authoring.test.ts packages/layout-core/tests/layout-region-planners.test.ts
-# 68 tests pass (30 editor, 38 layout-core)
+# 71 tests pass (33 editor, 38 layout-core)
 ```
 
 The focused editor file covers Shed birth, Card field ids, Gable form switching,
 Edit shape marks, eave and ridge drags with one history entry, shed midpoint
-insertion, ridge collapse, A6 Face / Put back, and the fit refusal wording. The
-layout-core file covers the create-with-form planner and its refusals.
+insertion, ridge collapse, A6 Face / Put back, the fit refusal wording, the
+U-shaped axis/oblique section clip, and both Flat lifecycle paths with camera
+restoration and ordinary manipulation afterward. The layout-core file covers the
+create-with-form planner and its refusals.
 
 The browser console contained only the pre-existing WebGPU-unavailable and
 accessibility warnings; no runtime errors were produced during these flows.
@@ -82,6 +104,13 @@ accessibility warnings; no runtime errors were produced during these flows.
    walls** is the first one-shot fit; **Fit walls to roof** is the second. Undo and
    Redo each fit independently.
 8. Set the Roof thickness to 0.02 m and repeat the fits to see the atomic refusal.
+9. Draw a U-shaped Roof with Plan **Line** taps, set rise 0.6 m and azimuth 30°, then
+   **Edit shape → Section**. The section stays in one covered leg instead of
+   crossing the notch.
+10. With Edit shape and Section open, drag the ridge below the eaves to make the Roof
+    Flat. The Card switches to Flat, Edit shape closes, and a corner drag works
+    immediately. Repeat after Undo: open Edit shape → Section, then choose **Flat**
+    in the Card; the same close and camera restore happen.
 
 The screenshots use the editor's development project at 1280 × 900. Conditional Save
 is unavailable in that local session, as its header states; that is pre-existing and

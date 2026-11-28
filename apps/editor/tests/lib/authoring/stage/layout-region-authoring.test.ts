@@ -7,7 +7,7 @@
  * and the Lift list that now includes authored slabs.
  */
 import { afterEach, describe, expect, it } from 'vitest';
-import { compileWallFirstLayoutGeometryFresh } from '@portfolio/layout-core/geometry';
+import { compileWallFirstLayoutGeometryFresh, pointInPolygon } from '@portfolio/layout-core/geometry';
 import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
 import { planCreateRegion, planSetRegionForm, regionWallRelations } from '@portfolio/layout-core/room';
 import type { AuthoringIntent } from '@portfolio/project-model/f4';
@@ -42,6 +42,7 @@ import {
 	regionSectionKey,
 	regionSectionOf
 } from '$lib/authoring/adapters/layout/region-section';
+import { syncRegionShape } from '$lib/authoring/adapters/layout/region-shape-lifecycle';
 import { regionFitRefusalWords } from '$lib/authoring/adapters/layout/refusals';
 import { regionShape } from '$lib/authoring/layout/region-shape-store';
 import { wallFace } from '$lib/authoring/layout/wall-face-store';
@@ -1033,6 +1034,52 @@ describe('T1 V3b — sloped fits through the production Layout adapter', () => {
 });
 
 /** T1 V3c — creator-facing Shed/Gable birth, Card fields, Edit shape and Section. */
+const U_FOOTPRINT: [number, number][] = [
+	[-1, -1],
+	[7, -1],
+	[7, 5],
+	[5, 5],
+	[5, 1],
+	[1, 1],
+	[1, 5],
+	[-1, 5]
+];
+
+function uRoofFixture(azimuth: number) {
+	const fixture = fixtureDocument();
+	const created = planCreateRegion({
+		baseline: fixture.document,
+		capture: captureFor('v3c-u-roof'),
+		intent: {
+			role: 'overhead',
+			footprint: U_FOOTPRINT,
+			elevation: 3.2,
+			thickness: 0.3,
+			name: 'U Gable',
+			form: { kind: 'gable', rise: 1.6, azimuth }
+		}
+	});
+	if (created.kind !== 'success') throw new Error(`the U gable fixture was refused: ${created.rejection.message}`);
+	return { fixture: { ...fixture, document: created.document }, roofId: created.regionId };
+}
+
+/** The section must stay inside one covered interval of the footprint. */
+function expectSectionInsideOneInterval(
+	section: NonNullable<ReturnType<typeof regionSectionOf>>,
+	footprint: readonly (readonly [number, number])[]
+): void {
+	expect(section.ridge).not.toBeNull();
+	expect(pointInPolygon(section.ridge!.point, footprint)).toBe(true);
+	for (let index = 1; index < 20; index += 1) {
+		const t = index / 20;
+		const point: readonly [number, number] = [
+			section.low.point[0] + (section.high.point[0] - section.low.point[0]) * t,
+			section.low.point[1] + (section.high.point[1] - section.low.point[1]) * t
+		];
+		expect(pointInPolygon(point, footprint), `section crossed a void at t=${t}`).toBe(true);
+	}
+}
+
 function gableRoofFixture() {
 	const fixture = fixtureDocument();
 	const created = planCreateRegion({
@@ -1146,6 +1193,18 @@ describe('T1 V3c — roof form authoring through the production Layout adapter',
 		expect(marks.some((mark) => mark.id.startsWith('layout-region-corner:'))).toBe(false);
 		expect(marks.some((mark) => mark.id === 'layout-region-move-mark')).toBe(false);
 		expect(marks.some((mark) => mark.id === 'layout-region-turn-mark')).toBe(false);
+	});
+
+	it('sections a U-shaped footprint inside one covered interval, axis and oblique', () => {
+		for (const azimuth of [Math.PI / 2, Math.PI / 6]) {
+			const { fixture, roofId } = uRoofFixture(azimuth);
+			const region = fixture.document.regions.find((candidate) => candidate.id === roofId)!;
+			const section = regionSectionOf(region, ELEVATION);
+			expect(section, `azimuth ${azimuth}`).not.toBeNull();
+			if (section === null) continue;
+			expect(section.form).toBe('gable');
+			expectSectionInsideOneInterval(section, region.footprint.points);
+		}
 	});
 
 	it('drags a ridge vertically and horizontally in one previewed form entry', async () => {
@@ -1344,6 +1403,120 @@ describe('T1 V3c — roof form authoring through the production Layout adapter',
 		await eventually(() => regionOf(mounted, gableId)?.form.kind === 'shed');
 		expect(regionOf(mounted, gableId)?.form.kind).toBe('shed');
 		expect(mounted.host.history().depth).toBe(depth + 1);
+	});
+
+	it('ends Edit shape and restores ordinary manipulation after a ridge collapses to Flat', async () => {
+		const { fixture, gableId } = gableRoofFixture();
+		const mounted = await mount(fixture);
+		selectRegion(mounted, gableId);
+		const gable = regionOf(mounted, gableId)!;
+		if (gable.form.kind !== 'gable') return;
+		const section = regionSectionOf(gable, ELEVATION)!;
+		const ridge = section.ridge!;
+		mounted.facade.camera.applyIntent(
+			{
+				kind: 'set-view',
+				eye: [12, 8, 12],
+				target: [3, 3.5, 2],
+				fovYDegrees: 50
+			},
+			2
+		);
+		settle(mounted, 2);
+		regionShape.open(gableId);
+		mounted.services.stage.notifySurfaceChange();
+		settle(mounted, 2);
+		let restored = 0;
+		wallFace.setCameraPort({
+			standpoint: () => ({ reading: '3d' }) as never,
+			face: () => true,
+			putBack: () => {
+				restored += 1;
+				return true;
+			}
+		});
+		try {
+			expect(
+				wallFace.face({ wallId: regionSectionKey(gableId), frame: regionSectionFrame(section)! }).kind
+			).toBe('applied');
+			expect(press(mounted, ridge.point, 'layout-region-section:ridge', ridge.height).claimed).toBe(
+				true
+			);
+			const flatY = ridge.height - gable.form.rise - 0.2;
+			moveTo(mounted, ridge.point, ridge.point, flatY);
+			releaseAt(mounted, ridge.point, flatY);
+			await eventually(() => regionOf(mounted, gableId)?.form.kind === 'flat');
+			expect(regionShape.current()).toBeNull();
+			expect(restored).toBe(1);
+			settle(mounted, 2);
+			const marks = mounted.facade.marks();
+			expect(marks.some((mark) => mark.id === 'layout-region-corner:0')).toBe(true);
+			expect(marks.some((mark) => mark.id === 'layout-region-turn-mark')).toBe(true);
+			expect(marks.some((mark) => mark.id.startsWith('layout-region-section:'))).toBe(false);
+
+			const flat = regionOf(mounted, gableId)!;
+			const before = flat.footprint.points[0]!;
+			const y = ELEVATION + flat.elevation;
+			expect(press(mounted, before, 'layout-region-corner:0', y).claimed).toBe(true);
+			const moved: readonly [number, number] = [before[0] + 0.3, before[1]];
+			moveTo(mounted, moved, before, y);
+			releaseAt(mounted, moved, y);
+			await eventually(() => (regionOf(mounted, gableId)?.footprint.points[0]?.[0] ?? 0) > before[0] + 0.1);
+		} finally {
+			wallFace.setCameraPort(null);
+		}
+	});
+
+	it('ends Edit shape and restores the Section camera when a roof is written Flat', async () => {
+		const { fixture, gableId } = gableRoofFixture();
+		const mounted = await mount(fixture);
+		selectRegion(mounted, gableId);
+		const gable = regionOf(mounted, gableId)!;
+		const section = regionSectionOf(gable, ELEVATION)!;
+		regionShape.open(gableId);
+		mounted.services.stage.notifySurfaceChange();
+		settle(mounted);
+		let restored = 0;
+		wallFace.setCameraPort({
+			standpoint: () => ({ reading: '3d' }) as never,
+			face: () => true,
+			putBack: () => {
+				restored += 1;
+				return true;
+			}
+		});
+		try {
+			expect(
+				wallFace.face({ wallId: regionSectionKey(gableId), frame: regionSectionFrame(section)! }).kind
+			).toBe('applied');
+			const snapshot = mounted.facade.snapshot();
+			expect(
+				(
+					await mounted.host.accept(
+						regionEditIntent({
+							kind: LAYOUT_REGION_FORM_KIND,
+							regionId: gableId,
+							payload: { form: { kind: 'flat' } },
+							operationId: globalThis.crypto.randomUUID(),
+							projectId: snapshot.acceptedRevision.projectId,
+							revisionId: snapshot.acceptedRevision.revisionId,
+							contentRevision: snapshot.domain.unitRevisions.layout,
+							levelId: snapshot.domain.layoutLevelId
+						})
+					)
+				).kind
+			).toBe('installed');
+			await eventually(() => regionOf(mounted, gableId)?.form.kind === 'flat');
+			expect(syncRegionShape(regionOf(mounted, gableId) ?? null)).toBe(true);
+			expect(regionShape.current()).toBeNull();
+			expect(restored).toBe(1);
+			settle(mounted);
+			expect(mounted.facade.marks().some((mark) => mark.id.startsWith('layout-region-section:'))).toBe(
+				false
+			);
+		} finally {
+			wallFace.setCameraPort(null);
+		}
 	});
 
 	it('builds an A6 Face frame for the Section and Put back restores the camera', () => {

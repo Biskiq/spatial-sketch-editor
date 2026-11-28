@@ -29,6 +29,7 @@
 	} from '$lib/authoring/stage/stage-adapter-host';
 	import { regionShape } from '$lib/authoring/layout/region-shape-store';
 	import { wallFace } from '$lib/authoring/layout/wall-face-store';
+	import { closeRegionShape, syncRegionShape } from './region-shape-lifecycle';
 	import {
 		LAYOUT_REGION_ELEVATION_KIND,
 		LAYOUT_REGION_FIT_EDGE_KIND,
@@ -179,12 +180,14 @@
 		return region !== null && regionShape.isActive(region.id);
 	});
 
-	/** A Region no longer selected cannot keep a hidden Edit shape session. */
+	/**
+	 * A Region no longer selected, or a roof that became Flat, cannot keep an
+	 * Edit shape session: clear it and put the Section camera back.
+	 */
 	$effect(() => {
-		const active = regionShape.current();
-		if (active !== null && active !== regionId) {
-			regionShape.close();
+		if (syncRegionShape(region)) {
 			shapeTick += 1;
+			faceTick += 1;
 			services.stage.notifySurfaceChange();
 		}
 	});
@@ -455,12 +458,9 @@
 	}
 
 	function closeEditShape(): void {
-		if (region !== null && sectionKey !== null && wallFace.isActive(sectionKey)) {
-			wallFace.putBack(sectionKey);
-			faceTick += 1;
-		}
-		regionShape.close();
+		closeRegionShape();
 		shapeTick += 1;
+		faceTick += 1;
 		services.stage.notifySurfaceChange();
 	}
 

@@ -34,6 +34,7 @@ import {
 	regionEditIntent,
 } from './region-planners';
 import { regionShape } from '$lib/authoring/layout/region-shape-store';
+import { closeRegionShape } from './region-shape-lifecycle';
 import {
 	regionSectionOf,
 	regionSectionSegments,
@@ -1043,12 +1044,18 @@ export function createRegionGestureSession(
 				return;
 			}
 			if (formSignature(current.form) === formSignature(current.startForm)) return;
-			await acceptEdit(
+			const installed = await acceptEdit(
 				LAYOUT_REGION_FORM_KIND,
 				current.regionId,
 				{ form: current.form },
 				current.revision,
 			);
+			// A ridge dragged all the way down leaves a Flat roof, which has no
+			// section. End the session now; the Card's form switch uses the same
+			// lifecycle when it writes Flat from its own control.
+			if (installed && current.form.kind === 'flat' && closeRegionShape()) {
+				services.stage.notifySurfaceChange();
+			}
 			return;
 		}
 		if (presenceDrift(current)) {
@@ -1088,9 +1095,9 @@ export function createRegionGestureSession(
 		regionId: string,
 		payload: ReturnType<typeof regionEditIntent>['payload'],
 		revision: string,
-	): Promise<void> {
+	): Promise<boolean> {
 		const snapshot = services.stage.snapshot();
-		if (stageUnitRevision(snapshot, 'layout') !== contentRevision) return;
+		if (stageUnitRevision(snapshot, 'layout') !== contentRevision) return false;
 		const outcome = await services.authoring.accept(
 			regionEditIntent({
 				kind,
@@ -1110,6 +1117,7 @@ export function createRegionGestureSession(
 			}
 		}
 		services.stage.notifySurfaceChange();
+		return outcome.kind === 'installed';
 	}
 
 	function settleRefusal(regionId: string, text: string): void {

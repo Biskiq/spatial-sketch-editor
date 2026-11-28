@@ -147,7 +147,7 @@
 		},
 		{
 			"path": "apps/editor/src/lib/authoring/adapters/layout/region-gesture-session.ts",
-			"lines": 1217,
+			"lines": 1225,
 			"reason": "One claimed region gesture: knob, body, turn, height and the V3c section joints share the selected Region and one lease."
 		},
 		{
