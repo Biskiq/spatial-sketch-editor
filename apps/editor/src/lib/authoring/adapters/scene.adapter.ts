@@ -24,11 +24,13 @@
  */
 
 import type {
+	StageAdapterContext,
 	StageAdapterFactory,
 	StageAdapterServices,
 	StageCandidatePreview,
 	StageGhostMesh,
 } from '$lib/authoring/stage/stage-adapter-host';
+import type { SceneEntity } from '@portfolio/project-model/scene';
 import type { StageAdapter, StageAdapterBinding } from '$lib/authoring/stage/stage-adapter-host';
 import { createProfileRevisionBinding, publishProfileRevision } from './scene/profile-revision';
 import {
@@ -48,17 +50,19 @@ import { materialTreatmentFacts } from '$lib/content/material-presentation';
 import type { MaterialId } from '$lib/types/materials';
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
 import ImportModelInstrumentLazy from './scene/import/ImportModelInstrumentLazy.svelte';
-import { armedModelDefinition, creatorDefinitions } from './scene/import/definitions';
 import {
 	presentDrawnCandidate,
 	presentGhosts,
 	presentMarkOutline,
 	presentOverlay,
 	presentPlacementPreview,
+	sceneCandidatePaperPreview,
 } from './scene/candidate-presenter';
 import { createObjectMarkSession } from './scene/object-mark-session';
 import { createSceneGroupSession } from './scene/group-session';
-import { liveProjectId } from './scene/object-readings';
+import { createGroupCopyBinding } from './scene/group-copy-binding';
+import { groupFreeMemberPreview } from './scene/group-preview';
+import { scenePlacementDefinitions } from './scene/scene-placement-definitions';
 import { createPlacementBinding } from './scene/placement-binding';
 import { createSceneContributions } from './scene/scene-contributions';
 import {
@@ -71,6 +75,19 @@ import {
 const catalogueLabel = (id: MaterialId): string =>
 	materialById.has(id) ? getMaterial(id).label : id;
 
+/** One composed member's Plan outline; the session cannot import the presenter itself. */
+function groupCopyOutline(
+	context: StageAdapterContext,
+	member: SceneEntity,
+	role: StageCandidatePreview['role'],
+): StageCandidatePreview | null {
+	if (member.kind === 'light') {
+		const preview = groupFreeMemberPreview(member, context);
+		return preview === null ? null : { ...preview, role };
+	}
+	return sceneCandidatePaperPreview(member, context.snapshot.domain.datumMeters, undefined, role);
+}
+
 export const createAdapter: StageAdapterFactory = (services: StageAdapterServices) => {
 	// Every planner is registered once, and the placement planner's definitions
 	// are re-read for each preparation instead of being frozen at registration:
@@ -81,6 +98,8 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 	// else. Built-in catalogue models enter this set only after their r186 contact
 	// verification is recorded; approved creator models remain project-scoped.
 	const admitted: NormalizedPlacementDefinition[] = [];
+	// The planners and the group-copy preview read the same definitions.
+	const sceneDefinitions = () => scenePlacementDefinitions(services, admitted);
 	const planners = [
 		...createArtworkPlanners(),
 		...createFinishPlanners({
@@ -89,16 +108,7 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 			materialProof: () => services.materialProofs.proof(),
 			targetAnalysis: services.targetAnalysis,
 		}),
-		...createScenePlanners({
-			definitions: () => {
-				// The approved model a creator has armed is an admitted definition even
-				// before its first placement installs the resource. A rebind (a drawing
-				// install replaces the accepted source) clears the captured procedure
-				// definitions, so the arm itself must keep the model placeable.
-				const armed = armedModelDefinition(liveProjectId(services));
-				return [...admitted, ...creatorDefinitions(), ...(armed === null ? [] : [armed])];
-			},
-		}),
+		...createScenePlanners({ definitions: sceneDefinitions }),
 	];
 	for (const planner of planners) {
 		const registration = services.authoring.registerPlanner(planner);
@@ -130,6 +140,7 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 			const placement = createPlacementBinding(services, context);
 			const marks = createObjectMarkSession(services);
 			const group = createSceneGroupSession(services, presentMarkOutline);
+			const groupCopy = createGroupCopyBinding(services, admitted, groupCopyOutline);
 			const contributions = createSceneContributions(services, context, marks, group);
 			const profile = createProfileRevisionBinding(services);
 
@@ -147,6 +158,9 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 				// starting a drag.
 				pointerIntent(intent, adapterContext) {
 					if (profile.active()) return profile.pointer(intent, adapterContext);
+					// An armed group copy owns the pointer outright: its preview, refusal
+					// and one-release commit never mix with Place's held-release state.
+					if (groupCopy.armed()) return groupCopy.pointer(intent, adapterContext);
 					if (placement.pointerPrelude(intent)) return true;
 					const taskKind = placement.taskKind();
 					// Compose is a typed command surface. It claims no pointer: a press over
@@ -166,6 +180,7 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 				 * host's gesture-key path, not the contributed-task key path.
 				 */
 				keyIntent(intent) {
+					if (groupCopy.key(intent)) return true;
 					if (placement.key(intent)) return true;
 					if (placement.taskKind() !== null) return false;
 					return group.key(intent) || marks.key(intent);
@@ -173,6 +188,7 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 				hoverIntent(intent, adapterContext) {
 					// The outline task owns the surface; placement proposes no placement.
 					if (profile.active()) return false;
+					if (groupCopy.armed()) return groupCopy.hover(intent, adapterContext);
 					return placement.hover(intent, adapterContext);
 				},
 				selectionChanged() {
@@ -191,6 +207,7 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 				},
 				candidatePreview(adapterContext): readonly StageCandidatePreview[] {
 					if (profile.active()) return profile.candidatePreview();
+					if (groupCopy.armed()) return groupCopy.candidatePreviews(adapterContext);
 					if (placement.drawing()) {
 						return presentDrawnCandidate(
 							placement.drawPreview(adapterContext),
@@ -221,6 +238,7 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 				// so Plan and 3D present the same pose the planner would commit.
 				overlay(adapterContext) {
 					if (profile.active()) return [];
+					if (groupCopy.armed()) return groupCopy.overlays(adapterContext);
 					if (placement.drawing()) return placement.drawOverlay(adapterContext);
 					return presentOverlay(adapterContext, placement.view(adapterContext));
 				},
@@ -231,6 +249,7 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 						const candidate = profile.ghost();
 						return candidate === null ? [] : [candidate];
 					}
+					if (groupCopy.armed()) return groupCopy.ghosts();
 					const object = marks.ghost(adapterContext);
 					const leading: StageGhostMesh[] = [];
 					if (placement.drawing()) leading.push(...placement.drawGhosts());
@@ -279,6 +298,7 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 				dispose() {
 					marks.reset();
 					group.reset();
+					groupCopy.dispose();
 					placement.dispose();
 					profile.dispose();
 					publishProfileRevision(null, profile.session);

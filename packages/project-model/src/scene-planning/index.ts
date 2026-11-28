@@ -265,6 +265,8 @@ export type {
 	GroupTemplateReadResult,
 } from './group-template';
 
+export { groupTemplateMemberContact } from './group-template-contact';
+
 export { prepareGroupCopyCandidate } from './group-copy';
 
 export type {

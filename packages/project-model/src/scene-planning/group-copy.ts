@@ -283,6 +283,12 @@ export function prepareGroupCopyCandidate(input: {
 	readonly clusterId: string;
 	readonly contacts: readonly (number | null)[];
 	readonly definitions?: readonly NormalizedPlacementDefinition[];
+	/**
+	 * The planner's own composed members, before destination revalidation. A
+	 * refused copy is still a visible proposal: the editor draws exactly these
+	 * poses in refusal ink, and never composes a second ghost of its own.
+	 */
+	readonly onProposed?: (members: readonly SceneEntity[]) => void;
 }): SceneGroupCopyResult {
 	const parsed = readGroupTemplate(input.template);
 	if (!parsed.success) {
@@ -398,7 +404,10 @@ export function prepareGroupCopyCandidate(input: {
 		return refusal('invalid-value', 'The composed group yaw is not finite.', ['yaw']);
 	}
 
-	const entities: SceneEntity[] = [];
+	// Compose every member first, so a copy that a later member refuses still has
+	// one complete proposal to show. Revalidation below keeps the exact refusal
+	// precedence of member order; this only moves the visibility boundary.
+	const composed: { readonly entity: SceneEntity; readonly position: Vec3 }[] = [];
 	const assets: string[] = [];
 	for (const [index, member] of template.members.entries()) {
 		const entityId = entityIds[index]!;
@@ -416,8 +425,15 @@ export function prepareGroupCopyCandidate(input: {
 		}
 		const built = buildMember(member, entityId, position, rotation);
 		if (built.kind === 'rejected') return built;
-		const entity = built.entity;
-		if (member.kind !== 'light') {
+		if (member.kind === 'model' && !assets.includes(member.assetId)) assets.push(member.assetId);
+		composed.push({ entity: built.entity, position });
+	}
+	input.onProposed?.(composed.map((entry) => entry.entity));
+	const entities: SceneEntity[] = [];
+	for (const [index, entry] of composed.entries()) {
+		const entity = entry.entity;
+		const position = entry.position;
+		if (entity.kind !== 'light') {
 			const contact = input.contacts[index]!;
 			const read = readContactMinY(entity, contact);
 			if (read.kind === 'rejected') return read;
@@ -436,7 +452,6 @@ export function prepareGroupCopyCandidate(input: {
 				);
 			}
 		}
-		if (member.kind === 'model' && !assets.includes(member.assetId)) assets.push(member.assetId);
 		entities.push(entity);
 	}
 

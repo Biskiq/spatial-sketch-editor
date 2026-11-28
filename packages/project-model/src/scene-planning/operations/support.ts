@@ -1,7 +1,7 @@
 import { type LayoutVec2 } from '@portfolio/layout-core/geometry';
 import { FLOOR_SUPPORT_TOLERANCES } from '@portfolio/layout-core/room';
 import { sceneFormContactMinY } from '../../form';
-import { type SceneEntity, type ScenePrimitiveEntity } from '../../scene';
+import { type SceneEntity } from '../../scene';
 import { framePointToWorld, frameYawToWorld } from '../frame';
 import { unsupportedTransform, refusal } from './refusals';
 import {
@@ -209,7 +209,17 @@ export function readContactMinY(
 	return { kind: 'value', value: captured };
 }
 
-export function analyticalContactMinY(entity: ScenePrimitiveEntity): number | null {
+/**
+ * The analytic facts one primitive contributes, each variant with its own
+ * dimensions. A full primitive entity and a template member both satisfy this
+ * without losing the primitive/dimension correlation.
+ */
+export type AnalyticalPrimitive =
+	| { readonly primitive: 'box' | 'cylinder'; readonly dimensions: { readonly height: number } }
+	| { readonly primitive: 'sphere'; readonly dimensions: { readonly radius: number } }
+	| { readonly primitive: 'plane'; readonly dimensions: unknown };
+
+export function analyticalContactMinY(entity: AnalyticalPrimitive): number | null {
 	switch (entity.primitive) {
 		case 'box':
 			return -entity.dimensions.height / 2;

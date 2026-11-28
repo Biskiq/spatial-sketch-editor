@@ -1,8 +1,9 @@
 # T2 · D8 — Visible fixtures and reusable lighting rigs
 
-**Status:** direction and P1–P5 accepted by the owner (2026-11-27), with the bounded corrections
-folded in below; P6 remains the owner's visual gate. Nothing here is implemented, no dependency is
-admitted and no asset is ingested. The plan grants permission only for the slices in §10.
+**Status:** direction, P1–P5 and the D8s specimen recommendations O1–O3 accepted by the owner
+(2026-11-27/28), with the bounded corrections folded in below. P6 is accepted (2026-11-28) and D8p
+has landed against it; D8d and D8f remain unimplemented. No fixture asset is ingested and no
+dependency beyond the plan is admitted. The plan grants permission only for the slices in §10.
 
 **Inputs:** the [T2 roadmap](../README.md) (§5 Lights, Groups and Rigs, D8, D12, D18, §9 Homes),
 the landed [G1 groups](../g1-groups/implementation-plan.md), [S8](../s8-professional-material-foundation/implementation-plan.md)'s
@@ -678,6 +679,16 @@ Any member failure refuses the whole write. Nothing is partly placed.
   - Escape cancels with no write. A refusal shows its words and writes nothing.
   - The overhead ghost uses the planner's query result.
   - The new group is selected.
+- **Status (2026-11-28): implemented.**
+  `apps/editor/src/lib/authoring/adapters/scene/group-copy-placement-session.ts` is the one session;
+  `group-copy-binding.ts` routes the Stage pointer, hover, Escape, ghost, mount line and Plan outline;
+  the arm store (`armGroupCopy` / `peekArmedGroupCopy` / `clearArmedGroupCopy`) is the only seam D8d
+  and D8f arm. Preview and acceptance call the same `prepareGroupCopyCandidate` with the same captured
+  template, ids, contacts and origin, so the ghost's member poses are the installed poses. The harness
+  `apps/editor/tests/lib/authoring/scene/group-copy-placement-session.test.ts` proves all three
+  origins, preview/acceptance agreement, the approved refusal words with the complete refused ghost,
+  stale-generation refusal, Escape, repeat placement with fresh identities, selection after acceptance
+  and atomic Undo/Redo. No mount relation, group frame or template reference is stored.
 - **Lanes:** editor vitest groups one at a time, `test:arch`.
 
 ### D8c — Fixture qualification
@@ -798,7 +809,10 @@ now ─┬─ D8a closure ─▶ D8b template + planner ─▶ D8p placement ses
 | P3 | Fixed directional heads (track cans, spots on stands) | **Accepted: defer** until articulation. Re-aiming the beam without the head would contradict the body. |
 | P4 | Which groups may be saved | **Accepted: any eligible group**, with or without a light. |
 | P5 | Library homes | **Accepted:** curated fixtures under **Lights › Fixtures**; saved groups under **My objects** only. |
-| P6 | Specimen approval (D8s) | **Open, owner visual gate.** D8p, D8d and D8f wait for it, as G1 did. |
+| P6 | Specimen approval (D8s) | **Accepted (owner, 2026-11-28).** §9 is the visual target for D8p, D8d and D8f; D8p landed against it. |
+| O1 | Duplicate offset for a wall fixture (D8s §8) | **Accepted: +0.5 m along the group's own X for every group.** Owning slice is group Duplicate (G1), not D8p: D8p stores no frame and this slice does not change landed G1. |
+| O2 | Moving a wall fixture (D8s §8) | **Accepted as a D8 limitation.** G1 Move stays floor-plane and D8 stores no wall relation; D8d records it in its notes. |
+| O3 | A saved fixture keeps its height (D8s §8) | **Accepted.** A saved group inserts with a `support` origin and keeps its height above the floor; D8p's support origin is that behaviour. |
 
 ### 12.2 Engineering decisions resolved here
 

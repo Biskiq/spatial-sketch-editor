@@ -34,6 +34,7 @@ import {
 	sceneClusterReference,
 	sceneEntityTargetReference,
 } from '../../scene/selection-target';
+import { nextGroupName } from './group-names';
 import { groupWithOfferFor, setGroupWithOffer } from './group-offer';
 
 async function acceptGroup(
@@ -89,19 +90,6 @@ function contactsOf(
 		contacts.push({ entityId: member.id, contactMinY: contact });
 	}
 	return contacts;
-}
-
-function nextGroupName(
-	scene: { readonly clusters?: readonly { readonly name: string }[] },
-	base: string,
-): string {
-	const names = new Set((scene.clusters ?? []).map((cluster) => cluster.name));
-	if (!names.has(base)) return base;
-	for (let index = 2; index < 1000; index += 1) {
-		const candidate = `${base} ${index}`;
-		if (!names.has(candidate)) return candidate;
-	}
-	return base;
 }
 
 function boundsOf(
