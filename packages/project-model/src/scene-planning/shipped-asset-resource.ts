@@ -87,6 +87,44 @@ export type ShippedAssetGrant = {
 export type ShippedAssetGrantResult = ShippedAssetGrant | ShippedAssetGrantRefusal;
 
 /**
+ * Whether the §4.1 grant rule would accept these assets, without applying it.
+ *
+ * The live preview asks this exact question, so a held resource or an orphan
+ * lock that acceptance would refuse never draws a committable ghost. It is the
+ * same rule `grantShippedAssetResources` applies; the planning result remains
+ * the only authority for the accepted envelope.
+ */
+export function shippedAssetGrantRefusal(
+	envelope: ProjectEnvelope,
+	assetIds: readonly string[],
+): ShippedAssetGrantRefusal | null {
+	const resources = envelope.units.resources.data.resources;
+	const locks = envelope.dependencyLock.entries;
+	for (const assetId of new Set(assetIds)) {
+		const entry = shippedModelResourceEntry(assetId);
+		if (entry === null) return refuse(assetId, 'unknown-shipped-asset');
+		const expected = entry.lock.contentRevision;
+		const held = resources.find((resource) => resource.kind === 'asset' && resource.id === assetId);
+		const subjectLocks = locks.filter(
+			(lock) =>
+				lock.domain === SHIPPED_ASSET_LOCK_DOMAIN &&
+				lock.subjectKind === 'resource' &&
+				lock.subjectId === assetId &&
+				lock.instancePath.length === 0,
+		);
+		for (const lock of subjectLocks) {
+			if (lock.contentRevision !== expected) return refuse(assetId, 'lock-pins-another-revision');
+		}
+		if (held === undefined) continue;
+		if (held.unresolved !== null) return refuse(assetId, 'unresolved-resource');
+		const revision = held.contentRevision ?? held.pin?.hash ?? null;
+		if (revision === null) return refuse(assetId, 'no-content-revision');
+		if (revision !== expected) return refuse(assetId, 'revision-differs');
+	}
+	return null;
+}
+
+/**
  * Apply the §4.1 grant rule for each distinct shipped asset id.
  *
  * | Held `asset` resource | Result |
@@ -112,6 +150,8 @@ export function grantShippedAssetResources(
 			addedLocks: [],
 		};
 	}
+	const refusal = shippedAssetGrantRefusal(envelope, uniqueAssetIds);
+	if (refusal !== null) return refusal;
 	const resources = [...envelope.units.resources.data.resources];
 	const locks = [...envelope.dependencyLock.entries];
 	const addedResources: TypedResource[] = [];

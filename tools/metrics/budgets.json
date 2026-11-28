@@ -1279,10 +1279,10 @@
 		},
 		{
 			"file": "apps/editor/src/lib/authoring/adapters/scene.adapter.ts",
-			"name": "catalogueLabel",
-			"line": 70,
-			"lines": 220,
-			"reason": "The catalogue label projection over one material vocabulary."
+			"name": "createAdapter",
+			"line": 105,
+			"lines": 218,
+			"reason": "The Scene adapter's one registration, composition and dispatch surface; D8p routes the armed group-copy binding beside Place, Mark, Group and Profile."
 		},
 		{
 			"file": "packages/layout-core/src/wall/development/mesh.ts",

@@ -16,14 +16,14 @@ the appearance target's D12 dock treatment in [`../appearance-ux/`](../appearanc
 Domain meaning and limits stay with [Scene](../../docs/reference/scene.md) and
 [architecture](../../docs/reference/architecture.md).
 
-## D8s amendment: fixtures and saved groups (awaiting owner)
+## D8s amendment: fixtures and saved groups (approved, 2026-11-28)
 
 [`index.html#fixtures`](./index.html#fixtures) (§9) is the T2 D8s design specimen: the Lights
 Library's conditional Fixtures row, ceiling, overhead and wall placement, group-first selection, the
 Group Card's Save to My Objects, and detached-copy insertion from My objects, all as one compound
 placement journey. `fixtures.js` and `fixtures.css` hold it; the Light Card is reused from §3
-unchanged. It needs explicit owner visual acceptance (D8 plan, P6) before D8p starts, and the
-approval above does not cover it until then.
+unchanged. The owner accepted it under D8 P6 on 2026-11-28, together with recommendations O1–O3, and
+D8p's shared placement session landed against it. D8d and D8f are still unimplemented.
 
 | Param | Effect |
 | --- | --- |

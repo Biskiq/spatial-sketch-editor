@@ -265,6 +265,8 @@ export type {
 	GroupTemplateReadResult,
 } from './group-template';
 
+export { groupTemplateMemberContact } from './group-template-contact';
+
 export { prepareGroupCopyCandidate } from './group-copy';
 
 export type {
@@ -294,6 +296,7 @@ export type { DefinitionMetadataFacts } from './metadata-identity';
 
 export {
 	grantShippedAssetResources,
+	shippedAssetGrantRefusal,
 	shippedAssetLockEntry,
 	shippedModelResourceEntry,
 	SHIPPED_ASSET_LOCK_DOMAIN,
