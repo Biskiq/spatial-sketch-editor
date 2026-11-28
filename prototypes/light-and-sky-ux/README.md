@@ -15,3 +15,18 @@ landmarks, coexistence, mark semantics and escape/return behavior come from
 the appearance target's D12 dock treatment in [`../appearance-ux/`](../appearance-ux/README.md).
 Domain meaning and limits stay with [Scene](../../docs/reference/scene.md) and
 [architecture](../../docs/reference/architecture.md).
+
+## D8s amendment: fixtures and saved groups (awaiting owner)
+
+[`index.html#fixtures`](./index.html#fixtures) (§9) is the T2 D8s design specimen: the Lights
+Library's conditional Fixtures row, ceiling, overhead and wall placement, group-first selection, the
+Group Card's Save to My Objects, and detached-copy insertion from My objects, all as one compound
+placement journey. `fixtures.js` and `fixtures.css` hold it; the Light Card is reused from §3
+unchanged. It needs explicit owner visual acceptance (D8 plan, P6) before D8p starts, and the
+approval above does not cover it until then.
+
+| Param | Effect |
+| --- | --- |
+| `d8=place&item=<lib id>` | Arm placement of a saved group, e.g. `lib-reading` |
+| `d8=fixture&item=<fixture id>` | Arm a fixture, e.g. `fixture-wall-sconce` |
+

@@ -45,6 +45,7 @@ or writes it, so board frames and reviewers never clobber each other.
 | `selectAll=1` | With `focus`, select every user of the Finish (reach *All*) |
 | `lib=all` · `curated` · `project` · `mine` · `sources` | Open the Library on a source |
 | `kind=materials` · `objects` · `openings` · `plants`, `intent=pick` · `swap`, `detail=<ref>` | Library kind, why it opened, and the detail pane, e.g. `detail=cat:wood-oak-veneer` |
+| `lib=mine&kind=objects` | Saved group tiles (T2 D8s amendment, awaiting owner): detail, *Place a copy in World ›* into [Light & Sky §9](../light-and-sky-ux/index.html#fixtures), and an earlier-version item |
 | `draft=<catalogue id>` | A Library draft of that material (*Customise…*) in the Material editor, on the focused surface |
 | `import=clean` · `messy` | Open the Import sheet on a clean vendor set (names settle everything) or the messy one (collision, unstated normal) |
 | `edit=<target>`, `compare=1`, `light=studio` · `grazing` · `world` | Open the Material editor |
