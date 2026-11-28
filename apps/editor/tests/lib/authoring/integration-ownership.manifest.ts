@@ -186,6 +186,7 @@ export const SINGLETONS = [
 		consumers: {
 			[layoutAdapter + 'layout-contributions.ts']: ['isActive', 'face', 'putBack'],
 			[layoutAdapter + 'layout-card-actions.ts']: ['isActive', 'face', 'putBack'],
+			[layoutAdapter + 'LayoutRegionCard.svelte']: ['isActive', 'face', 'putBack'],
 			[authoring + 'look/finish-align.svelte.ts']: ['face', 'faceFloor', 'reframe', 'putBack']
 		}
 	},
