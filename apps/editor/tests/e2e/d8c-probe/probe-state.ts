@@ -7,10 +7,8 @@ export type ProbeRecord = {
 	frames: number;
 	drawCalls: number | null;
 	triangles: number | null;
-	programs: number | null;
 	textures: number | null;
 	meshes: number | null;
-	renderFrame: number | null;
 	materials: unknown[];
 	error: string | null;
 	readyAt: number | null;
@@ -31,10 +29,8 @@ export const probe: ProbeRecord = (() => {
 		frames: 0,
 		drawCalls: null,
 		triangles: null,
-		programs: null,
 		textures: null,
 		meshes: null,
-		renderFrame: null,
 		materials: [],
 		error: null,
 		readyAt: null,

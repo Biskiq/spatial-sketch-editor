@@ -343,6 +343,25 @@ export function cameraFor(scenario: Scenario, posesResult: ReturnType<typeof pos
 			fov
 		};
 	}
-	if (view === 'range') return world.rangeCamera;
-	return candidate.mount === 'wall' ? world.wallCamera : world.ceilingCamera;
+	if (view === 'range') {
+		return {
+			position: [
+				world.rangeCamera.position[0],
+				world.rangeCamera.position[1],
+				world.rangeCamera.position[2]
+			],
+			target: [
+				world.rangeCamera.target[0],
+				world.rangeCamera.target[1],
+				world.rangeCamera.target[2]
+			],
+			fov: world.rangeCamera.fov
+		};
+	}
+	const roomCamera = candidate.mount === 'wall' ? world.wallCamera : world.ceilingCamera;
+	return {
+		position: [roomCamera.position[0], roomCamera.position[1], roomCamera.position[2]],
+		target: [roomCamera.target[0], roomCamera.target[1], roomCamera.target[2]],
+		fov: roomCamera.fov
+	};
 }

@@ -66,18 +66,14 @@
 			const renderer = state?.renderer ?? null;
 			const info = renderer?.info;
 			probe.materials = [...seen.values()];
-			probe.programs = info?.programs?.length ?? null;
 			probe.textures = info?.memory?.textures ?? null;
 			probe.drawCalls = info?.render?.calls ?? null;
 			probe.triangles = info?.render?.triangles ?? null;
 			probe.generation = state?.generation ?? null;
 			probe.meshes = meshes;
-			probe.renderFrame = info?.render?.frame ?? null;
-			// The WebGPU backend exposes `info.render.frame`; the WebGL2 compatibility
-			// backend does not advance it for this renderer. An initialized renderer
-			// with a continuous render mode is the readiness proof in that case, and
-			// the screenshot is the visual one.
-			if ((probe.renderFrame ?? 0) > 0 || state?.renderer !== null) markFrame();
+			// An initialized renderer with a continuous render mode is the readiness
+			// proof; the screenshot is the visual one.
+			if (state?.renderer != null) markFrame();
 		}, 200);
 		return () => clearInterval(timer);
 	});
