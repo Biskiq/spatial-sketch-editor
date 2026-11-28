@@ -80,7 +80,7 @@
 			layout.walls.map((wall) => ({ identity: wall.id, kind: 'Wall', name: wall.name ?? null }))
 		)
 	);
-	const READING_LABELS = { crosses: 'Crosses', meets: 'Meets', unavailable: 'Not read on a sloped roof yet' };
+	const READING_LABELS = { crosses: 'Crosses', meets: 'Meets', unavailable: 'Not certified on this roof' };
 	const datum = $derived(snapshot.domain.datumMeters);
 	const restingObjects = $derived(
 		region === null ? 0 : restingObjectsOnFloorRegion(snapshot, region.id)

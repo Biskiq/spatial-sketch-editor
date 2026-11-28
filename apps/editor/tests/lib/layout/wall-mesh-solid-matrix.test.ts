@@ -18,6 +18,7 @@ import { compileRoom } from '../../helpers/wall-mesh-fixtures';
 import { buildRoomWallMesh } from '$lib/layout/wall-mesh-room';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-standalone';
 import type { IndexedWallMesh } from '$lib/layout/wall-mesh-types';
+import { compiledWallStrip } from '@portfolio/layout-core/room';
 
 type V3 = [number, number, number];
 
@@ -64,6 +65,22 @@ function triangles(all: readonly IndexedWallMesh[]): V3[][] {
 		}
 	}
 	return out;
+}
+
+/** Inclusive point-in-polygon (either winding) within `tolerance` of an edge. */
+function insideOrOn(polygon: readonly LayoutVec2[], point: LayoutVec2, tolerance: number): boolean {
+	let positive = false;
+	let negative = false;
+	for (let index = 0; index < polygon.length; index += 1) {
+		const a = polygon[index]!;
+		const b = polygon[(index + 1) % polygon.length]!;
+		const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+		if (length <= tolerance) continue;
+		const side = ((b[0] - a[0]) * (point[1] - a[1]) - (b[1] - a[1]) * (point[0] - a[0])) / length;
+		if (side > tolerance) positive = true;
+		if (side < -tolerance) negative = true;
+	}
+	return !(positive && negative);
 }
 
 const GRID = 1e-5;
@@ -273,6 +290,28 @@ describe('physical Wall solids', () => {
 			],
 		];
 
+		/** A gable apex 0.05 m from a 90° mitre: inside the inner face's 0.1 m corner reach. */
+		const apexInReach = layout({ a: [0, 0], b: [6, 0], c: [6, 4] }, [
+			wall('w1', 'a', 'b', { top: { kind: 'gable', startRise: 0, endRise: 0, apexRise: 1, apexOffset: 5.95 } }),
+			wall('w2', 'b', 'c')
+		]);
+		CASES.push(['L corner, gable apex inside the mitre reach', apexInReach]);
+
+		it('a top knot inside the mitre reach keeps every mesh vertex on the certified Wall body', () => {
+			const compiled = compileWallFirstLayoutGeometry(apexInReach);
+			const joins = legJoinsByWall(compiled.geometry.junctions);
+			const w1 = compiled.geometry.walls.find((entry) => entry.wallId === 'w1')!;
+			const built = buildStandaloneWallMesh(w1, 0, joins.get('w1') ?? null, { assertWinding: true });
+			expect(built.issues).toEqual([]);
+			const strip = compiledWallStrip(w1, joins.get('w1'), 0);
+			const polygons = strip.map((piece) => (piece.kind === 'cell' ? [piece.fa, piece.fb, piece.bb, piece.ba] : piece.polygon));
+			const mesh = built.mesh!;
+			for (let index = 0; index < mesh.positions.length / 3; index += 1) {
+				const point: LayoutVec2 = [mesh.positions[index * 3]!, mesh.positions[index * 3 + 2]!];
+				expect(polygons.some((polygon) => insideOrOn(polygon, point, 1e-7)), `vertex ${point.join(', ')}`).toBe(true);
+			}
+		});
+
 		it.each(CASES)('%s is closed', (_name, document) => {
 			const all = meshes(document);
 			for (const mesh of all) assertWindingAgreesWithNormals(mesh);
@@ -459,9 +498,11 @@ describe('physical Wall solids', () => {
 			return compiled.geometry.walls.map((compiledWall) => buildStandaloneWallMesh(compiledWall, 0, joins.get(compiledWall.wallId) ?? null).mesh!);
 		};
 
-		it('a 30° mitre winds a triangle against its normal, though it closes', () => {
+		// Formerly pinned here as folding: an interface edge inside the inner face's
+		// mitre reach now ends at the resolved corner, as the Layout strip's does.
+		it('a 30° mitre winds with its normals and closes', () => {
 			const all = built(corner(30));
-			expect(() => assertWindingAgreesWithNormals(all[0]!)).toThrow(/winds opposite/);
+			for (const mesh of all) assertWindingAgreesWithNormals(mesh);
 			expect(openEdges(triangles(all))).toEqual([]);
 		});
 

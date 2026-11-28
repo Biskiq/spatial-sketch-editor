@@ -59,7 +59,6 @@ export {
 	planFitRegionToSpace,
 	planFitRegionToWalls,
 	planFitWallsToRegion,
-	REGION_FORM_FIT_UNSUPPORTED_CODE,
 	planMoveRegion,
 	planRemoveRegion,
 	planRenameRegion,
@@ -67,11 +66,20 @@ export {
 	planSetRegionElevation,
 	planSetRegionFootprint,
 	planSetRegionIntendedGap,
+	planSetRegionForm,
 	planSetRegionThickness,
+	compiledWallStrip,
+	regionWallVerticalExtrema,
+	REGION_WALL_EXTREMA_TOLERANCE_METERS,
+	REGION_WALL_EXTREMA_UNCERTIFIED_CODE,
+	REGION_FIT_CLOSED_WALL_CODE,
+	REGION_FIT_CURVED_WALL_NOT_LEVEL_CODE,
+	REGION_FIT_WALL_OVERRUN_CODE,
 } from './region';
 
 export type {
 	RegionCreateIntent,
+	RegionFormInput,
 	RegionPlan,
 	RegionPlannerOperation,
 	RegionPlannerRejection,
@@ -118,6 +126,14 @@ export {
 	regionUndersideNormalAt,
 } from './region/form';
 export type { RegionFormFacts, RegionFormProfile } from './region/form';
+export type {
+	RegionWallVerticalExtrema,
+	RegionWallVerticalPoint,
+	WallStripCell,
+	WallStripEnds,
+	WallStripPatch,
+	WallStripPiece,
+} from './region';
 
 export {
 	connectedRoomIds,

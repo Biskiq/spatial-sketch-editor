@@ -9,7 +9,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { compileWallFirstLayoutGeometryFresh } from '@portfolio/layout-core/geometry';
 import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core/wall';
-import { planCreateRegion, regionWallRelations } from '@portfolio/layout-core/room';
+import { planCreateRegion, planSetRegionForm, regionWallRelations } from '@portfolio/layout-core/room';
 import type { AuthoringIntent } from '@portfolio/project-model/f4';
 import type { SceneEntity } from '@portfolio/project-model/scene';
 import { creatorModelResourceEntry } from '@portfolio/project-model/scene-planning';
@@ -31,6 +31,8 @@ import { inkSurface } from '$lib/authoring/adapters/layout/ink';
 import { layoutRoomFacts } from '$lib/authoring/adapters/layout/precision-facts';
 import { restingObjectsOnFloorRegion } from '$lib/authoring/adapters/layout/region-resting';
 import {
+	LAYOUT_REGION_FIT_ROOF_KIND,
+	LAYOUT_REGION_FIT_WALLS_KIND,
 	LAYOUT_REGION_THICKNESS_KIND,
 	regionEditIntent
 } from '$lib/authoring/adapters/layout/region-planners';
@@ -940,5 +942,81 @@ describe('T1 V1c — regions through the production Layout adapter', () => {
 		expect(sources.map((source) => source.subject.id)).not.toContain(mounted.terraceId);
 		interiorLift.putBack();
 		expect(liftedSourcesNow(geometry)).toEqual([]);
+	});
+});
+
+/** The V1c fixture plus a shed over the whole enclosure (T1 V3b). */
+function slopedRoofFixture(thickness: number) {
+	const fixture = fixtureDocument();
+	const created = planCreateRegion({
+		baseline: fixture.document,
+		capture: captureFor(`v3b-shed-${thickness}`),
+		intent: { role: 'overhead', footprint: [[-1, -1], [7, -1], [7, 5], [-1, 5]], elevation: 3.2, thickness, name: 'Shed' }
+	});
+	if (created.kind !== 'success') throw new Error(`the shed fixture was refused: ${created.rejection.message}`);
+	const formed = planSetRegionForm(created.document, created.regionId, { kind: 'shed', rise: 1.6, azimuth: 0 });
+	if (formed.kind !== 'success') throw new Error(`the shed form was refused: ${formed.rejection.message}`);
+	return { fixture: { ...fixture, document: formed.document }, shedId: created.regionId };
+}
+
+describe('T1 V3b — sloped fits through the production Layout adapter', () => {
+	function fitIntent(mounted: Mounted, kind: string, regionId: string) {
+		const snapshot = mounted.facade.snapshot();
+		return regionEditIntent({
+			kind,
+			regionId,
+			payload: { wallIds: acceptedLayout(mounted).walls.map((wall) => wall.id) },
+			operationId: globalThis.crypto.randomUUID(),
+			projectId: snapshot.acceptedRevision.projectId,
+			revisionId: snapshot.acceptedRevision.revisionId,
+			contentRevision: snapshot.domain.unitRevisions.layout,
+			levelId: snapshot.domain.layoutLevelId
+		});
+	}
+	const readings = (mounted: Mounted, regionId: string) => {
+		const layout = acceptedLayout(mounted);
+		const result = regionWallRelations(
+			compileWallFirstLayoutGeometryFresh(layout).geometry,
+			layout.regions.find((region) => region.id === regionId)!
+		);
+		if (result.kind !== 'relations') throw new Error(JSON.stringify(result));
+		return result.relations.map((relation) => relation.reading);
+	};
+
+	it('fits roof then walls in one history entry each, with exact Undo and Redo', async () => {
+		const { fixture, shedId } = slopedRoofFixture(0.3);
+		const mounted = await mount(fixture);
+		const depth = mounted.host.history().depth;
+		const original = JSON.stringify(acceptedLayout(mounted));
+
+		expect((await mounted.host.accept(fitIntent(mounted, LAYOUT_REGION_FIT_ROOF_KIND, shedId))).kind).toBe('installed');
+		expect(mounted.host.history().depth).toBe(depth + 1);
+		const roofFitted = JSON.stringify(acceptedLayout(mounted));
+		expect(readings(mounted, shedId)).not.toContain('crosses');
+
+		expect((await mounted.host.accept(fitIntent(mounted, LAYOUT_REGION_FIT_WALLS_KIND, shedId))).kind).toBe('installed');
+		expect(mounted.host.history().depth).toBe(depth + 2);
+		const wallsFitted = JSON.stringify(acceptedLayout(mounted));
+		expect(new Set(readings(mounted, shedId))).toEqual(new Set(['meets']));
+
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(JSON.stringify(acceptedLayout(mounted))).toBe(roofFitted);
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(JSON.stringify(acceptedLayout(mounted))).toBe(original);
+		expect((await mounted.host.redo()).kind).toBe('installed');
+		expect((await mounted.host.redo()).kind).toBe('installed');
+		expect(JSON.stringify(acceptedLayout(mounted))).toBe(wallsFitted);
+	});
+
+	it('refuses a fit that would project through a thin roof and writes no history', async () => {
+		// 0.2 m Walls under a 0.2 slope spread 0.04 m; a 0.02 m roof cannot seal it.
+		const { fixture, shedId } = slopedRoofFixture(0.02);
+		const mounted = await mount(fixture);
+		const depth = mounted.host.history().depth;
+		const before = JSON.stringify(acceptedLayout(mounted));
+		const refused = await mounted.host.accept(fitIntent(mounted, LAYOUT_REGION_FIT_WALLS_KIND, shedId));
+		expect(refused).toMatchObject({ kind: 'refused', reason: 'region_fit_wall_overrun' });
+		expect(mounted.host.history().depth).toBe(depth);
+		expect(JSON.stringify(acceptedLayout(mounted))).toBe(before);
 	});
 });

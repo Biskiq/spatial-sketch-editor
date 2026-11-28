@@ -1227,7 +1227,7 @@
 			"file": "apps/editor/src/lib/layout/wall-mesh-sections.ts",
 			"name": "buildSectionFaces",
 			"line": 33,
-			"lines": 221,
+			"lines": 203,
 			"reason": "Baseline exception: the owning split removes this entry."
 		},
 		{

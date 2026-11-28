@@ -17,7 +17,8 @@ export type RegionPlannerOperation =
 	| 'region-fit-space'
 	| 'region-fit-edge'
 	| 'region-fit-walls'
-	| 'region-fit-roof';
+	| 'region-fit-roof'
+	| 'region-form';
 
 export type RegionPlannerRejectionCode =
 	| 'unknown_region'
@@ -71,3 +72,17 @@ export type RegionCreateIntent = {
 	readonly thickness: number;
 	readonly name?: string;
 };
+
+/**
+ * One requested Region form (§7.2). Omitted values take the deterministic
+ * defaults when the kind changes, and keep the current values otherwise.
+ */
+export type RegionFormInput =
+	| { readonly kind: 'flat' }
+	| { readonly kind: 'shed'; readonly rise?: number; readonly azimuth?: number }
+	| {
+			readonly kind: 'gable';
+			readonly rise?: number;
+			readonly azimuth?: number;
+			readonly ridgeOffset?: number;
+	  };

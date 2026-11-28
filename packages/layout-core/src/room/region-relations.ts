@@ -17,6 +17,9 @@ import type {
 	CompiledRegion,
 } from '../geometry/types';
 import type { LayoutRegion } from '../wall/types';
+import { legJoinsByWall } from '../wall/junction/joins';
+import { compiledRegionWallExtrema } from './region/wall-extrema';
+import { slopedMeasureSegment, slopedRegionWallReading } from './region/sloped-reading';
 import {
 	cross,
 	distanceBetween,
@@ -39,9 +42,10 @@ export const REGION_WALL_RELATION_REACH_METERS = 1;
 
 export type RegionWallPlanClass = 'through' | 'edge' | 'near' | 'none';
 /**
- * `unavailable`: the vertical relation of a Wall under a shed or gable Region is
- * not certified in V3a (V3b reads it over the whole covered Wall strip), so it
- * is reported as unread rather than approximated or read as if flat.
+ * `unavailable`: the vertical relation of a Wall under a shed or gable Region
+ * could not be certified over its covered strip (`wall-extrema.ts`), so it is
+ * reported as unread rather than approximated or read as if flat. A valid
+ * compiled Wall always certifies; this is the fail-closed reading.
  */
 export type RegionWallReading = 'gap' | 'meets' | 'crosses' | 'unavailable';
 
@@ -213,6 +217,8 @@ export function regionWallRelations(
 	}
 
 	const relations: RegionWallRelation[] = [];
+	const sloped = compiledRegion.form !== undefined && compiledRegion.form.kind !== 'flat';
+	const joins = sloped ? legJoinsByWall(compiled.junctions) : null;
 	for (const wall of compiled.walls) {
 		const plan = regionWallPlanClass(compiledRegion.footprint, wall);
 		if (plan.planClass === 'none') continue;
@@ -222,10 +228,24 @@ export function regionWallRelations(
 		// covered intervals, where the clearance actually is; a level Wall keeps
 		// the retained nearest-contact cue.
 		const governing = regionWallTopGoverningStation(wall, floor.elevation, coverage.intervals);
-		const sloped = compiledRegion.form !== undefined && compiledRegion.form.kind !== 'flat';
+		const vertical =
+			joins !== null && (plan.planClass === 'through' || plan.planClass === 'edge')
+				? compiledRegionWallExtrema(
+						compiledRegion,
+						wall,
+						joins.get(wall.wallId),
+						floor.elevation,
+						REGION_WALL_RELATION_EPSILON,
+					)
+				: null;
 		const reading =
-			sloped && (plan.planClass === 'through' || plan.planClass === 'edge')
-				? UNAVAILABLE_READING
+			vertical !== null
+				? slopedRegionWallReading(
+						plan.planClass,
+						vertical,
+						region.role,
+						REGION_WALL_RELATION_EPSILON,
+					)
 				: regionWallReading(plan, topRange, compiledRegion, region.role);
 		if (reading === null) continue;
 		const intended = reading.reading === 'gap' && region.intendedGaps.includes(wall.wallId);
@@ -235,14 +255,17 @@ export function regionWallRelations(
 			reading: reading.reading,
 			measureMeters: reading.measureMeters,
 			measureAxis: reading.measureAxis,
-			measureSegment: regionWallMeasureSegment(
-				reading,
-				coverage.pair,
-				compiledRegion,
-				topRange.maxY,
-				region.role,
-				governing,
-			),
+			measureSegment:
+				vertical?.kind === 'certified'
+					? slopedMeasureSegment(reading, vertical)
+					: regionWallMeasureSegment(
+							reading,
+							coverage.pair,
+							compiledRegion,
+							topRange.maxY,
+							region.role,
+							governing,
+						),
 			intended,
 			fit: intended ? null : reading.fit,
 		});
@@ -261,7 +284,7 @@ export function regionWallRelations(
 
 /** The relation's measurement endpoints, from the same pair the measure is read from. */
 function regionWallMeasureSegment(
-	reading: Reading,
+	reading: RegionWallReadingFacts,
 	pair: {
 		readonly distance: number;
 		readonly region: LayoutVec2;
@@ -288,19 +311,11 @@ function regionWallMeasureSegment(
 	};
 }
 
-type Reading = {
+export type RegionWallReadingFacts = {
 	reading: RegionWallReading;
 	measureMeters: number | null;
 	measureAxis: 'vertical' | 'horizontal' | null;
 	fit: 'meet-wall' | 'fit-roof-to-walls' | null;
-};
-
-/** A sloped Region's uncertified vertical reading: no measure, cue or fit. */
-const UNAVAILABLE_READING: Reading = {
-	reading: 'unavailable',
-	measureMeters: null,
-	measureAxis: null,
-	fit: null,
 };
 
 function regionWallReading(
@@ -308,7 +323,7 @@ function regionWallReading(
 	top: { minY: number; maxY: number },
 	region: Pick<CompiledRegion, 'bottomY' | 'topY'>,
 	role: LayoutRegion['role'],
-): Reading | null {
+): RegionWallReadingFacts | null {
 	const slabBottom = region.bottomY;
 	const slabTop = region.topY;
 	const wallTop = top.maxY;

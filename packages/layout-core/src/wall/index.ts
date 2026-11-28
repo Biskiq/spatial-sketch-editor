@@ -367,6 +367,8 @@ export {
 
 export type { WallTopBreakpoint, WallTopIssue, WallTopJoinPart, WallTopSlice } from './wall-top';
 
+export { wallEndReachPoint } from './end-reach';
+
 export {
 	CLOSED_WALL_CIRCLE_KNOT_COUNT,
 	CLOSED_WALL_CIRCLE_SPAN_COUNT,
