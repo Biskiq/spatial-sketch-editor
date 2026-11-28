@@ -452,7 +452,8 @@ Slice's Section, an opened Room before a pavilion, a flat canopy before a gable.
 | Spaces | **Ready for implementation once S2 reports.** Concept and rules are settled; the encoding is not, on purpose | SP-plan, then PR |
 | Verticality | **Ready for implementation.** Order, datum and intent are settled | V-plan, then PR |
 | Connected curves | **Landed (`C1–C4`).** The C-plan is retired after acceptance | – |
-| Section (SL3), SP3, V2, V3 | **Sequenced, not planned.** Each follows a slice that will inform it | Later |
+| Section (SL3) | **Planned:** [sl3-plan-section.md](sl3-plan-section.md), as SL3a Face the cut, SL3b `layout.section@1` and SL3c the Section reading | Its PRs |
+| SP3, V2, V3 | **Sequenced, not planned.** Each follows a slice that will inform it | Later |
 
 Overall: the proposal is ready to drive implementation of the fundamentals and implementation
 planning for Spaces, Reveal, Slice and verticality. It is deliberately **not** a technical plan for
