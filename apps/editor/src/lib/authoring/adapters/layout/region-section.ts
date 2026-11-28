@@ -204,18 +204,38 @@ export function regionSectionOf(
 			ridgeInterval = interval;
 		}
 	}
-	if (ridgeInterval === null) return null;
-	const anchor: LayoutVec2 = [
-		(ridgeInterval.start[0] + ridgeInterval.end[0]) / 2,
-		(ridgeInterval.start[1] + ridgeInterval.end[1]) / 2,
-	];
-	// The uphill line through that station may cross the footprint again. Keep
-	// only the one covered interval that contains the station, so the section is
-	// a continuous slab face and never bridges a notch.
-	const span = lineIntervals(region.footprint.points, anchor, direction).find(
-		(interval) => interval.tStart <= LINE_T_EPSILON && interval.tEnd >= -LINE_T_EPSILON,
-	);
-	if (span === undefined) return null;
+	let anchor: LayoutVec2 | null = null;
+	let span: LineInterval | undefined;
+	if (ridgeInterval !== null) {
+		anchor = [
+			(ridgeInterval.start[0] + ridgeInterval.end[0]) / 2,
+			(ridgeInterval.start[1] + ridgeInterval.end[1]) / 2,
+		];
+		// The uphill line through that station may cross the footprint again. Keep
+		// only the one covered interval that contains the station, so the section is
+		// a continuous slab face and never bridges a notch.
+		span = lineIntervals(region.footprint.points, anchor, direction).find(
+			(interval) => interval.tStart <= LINE_T_EPSILON && interval.tEnd >= -LINE_T_EPSILON,
+		);
+	}
+	// An oblique rectangle can reach its Shed maximum at one footprint vertex, so
+	// the high-eave line has no positive-length covered stretch. Fall back to that
+	// point station and keep only an uphill interval that contains it; the interval
+	// is still admitted by its own covered midpoint, never by joining remote hits.
+	if (anchor === null && form.kind === 'shed') {
+		for (const point of region.footprint.points) {
+			if (Math.abs(qOf(azimuth, point) - profile.qMax) > POINT_ON_EDGE_EPSILON) continue;
+			const pointSpan = lineIntervals(region.footprint.points, point, direction).find(
+				(interval) => interval.tStart <= LINE_T_EPSILON && interval.tEnd >= -LINE_T_EPSILON,
+			);
+			if (pointSpan === undefined) continue;
+			if (span === undefined || pointSpan.tEnd - pointSpan.tStart > span.tEnd - span.tStart) {
+				anchor = point;
+				span = pointSpan;
+			}
+		}
+	}
+	if (anchor === null || span === undefined) return null;
 	const lowPoint = span.start;
 	const highPoint = span.end;
 	const low = joint('low', 'Low eave', lowPoint, facts);

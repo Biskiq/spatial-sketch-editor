@@ -57,6 +57,13 @@ void cannot become a drawn section. A U-shaped footprint is covered both with an
 axis-aligned ridge and with an oblique 30° section; every sampled section station
 is inside the footprint.
 
+A Shed whose maximum projection is a single footprint vertex has no covered
+high-eave stretch. The clip now falls back to that covered point station and
+keeps only the uphill interval containing it, still admitted by its own covered
+midpoint. An oblique 30° rectangle is the regression: its unique high vertex is
+the section's high eave, the section stays inside the rectangle, and the concave
+Gable path is unchanged.
+
 Edit shape now has one lifecycle owner. A Flat form (from a collapsed ridge or a
 Card Kind switch) closes the session and returns the Camera only when the Section
 face is the live reading. The same path runs from the Stage shape release and
@@ -74,14 +81,15 @@ npm run check               # 0 errors, 6 pre-existing Svelte warnings
 npm run lint:ci             # pass
 npm run build:editor        # pass
 npx vitest run apps/editor/tests/lib/authoring/stage/layout-region-authoring.test.ts packages/layout-core/tests/layout-region-planners.test.ts
-# 71 tests pass (33 editor, 38 layout-core)
+# 72 tests pass (34 editor, 38 layout-core)
 ```
 
 The focused editor file covers Shed birth, Card field ids, Gable form switching,
 Edit shape marks, eave and ridge drags with one history entry, shed midpoint
 insertion, ridge collapse, A6 Face / Put back, the fit refusal wording, the
-U-shaped axis/oblique section clip, and both Flat lifecycle paths with camera
-restoration and ordinary manipulation afterward. The layout-core file covers the
+U-shaped axis/oblique section clip, the oblique rectangular Shed point-contact
+section, and both Flat lifecycle paths with camera restoration and ordinary
+manipulation afterward. The layout-core file covers the
 create-with-form planner and its refusals.
 
 The browser console contained only the pre-existing WebGPU-unavailable and

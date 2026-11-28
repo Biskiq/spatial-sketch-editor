@@ -1064,12 +1064,10 @@ function uRoofFixture(azimuth: number) {
 }
 
 /** The section must stay inside one covered interval of the footprint. */
-function expectSectionInsideOneInterval(
+function expectSectionCovered(
 	section: NonNullable<ReturnType<typeof regionSectionOf>>,
 	footprint: readonly (readonly [number, number])[]
 ): void {
-	expect(section.ridge).not.toBeNull();
-	expect(pointInPolygon(section.ridge!.point, footprint)).toBe(true);
 	for (let index = 1; index < 20; index += 1) {
 		const t = index / 20;
 		const point: readonly [number, number] = [
@@ -1078,6 +1076,27 @@ function expectSectionInsideOneInterval(
 		];
 		expect(pointInPolygon(point, footprint), `section crossed a void at t=${t}`).toBe(true);
 	}
+}
+
+function expectSectionInsideOneInterval(
+	section: NonNullable<ReturnType<typeof regionSectionOf>>,
+	footprint: readonly (readonly [number, number])[]
+): void {
+	expect(section.ridge).not.toBeNull();
+	expect(pointInPolygon(section.ridge!.point, footprint)).toBe(true);
+	expectSectionCovered(section, footprint);
+}
+
+/** The whole-enclosure Shed turned to an azimuth whose maximum is one vertex. */
+function obliqueShedFixture(azimuth: number) {
+	const { fixture, shedId } = slopedRoofFixture(0.3);
+	const formed = planSetRegionForm(fixture.document, shedId, {
+		kind: 'shed',
+		rise: 1.6,
+		azimuth
+	});
+	if (formed.kind !== 'success') throw new Error(`the oblique shed form was refused: ${formed.rejection.message}`);
+	return { fixture: { ...fixture, document: formed.document }, shedId };
 }
 
 function gableRoofFixture() {
@@ -1205,6 +1224,31 @@ describe('T1 V3c — roof form authoring through the production Layout adapter',
 			expect(section.form).toBe('gable');
 			expectSectionInsideOneInterval(section, region.footprint.points);
 		}
+	});
+
+	it('keeps a point-contact high eave for an oblique rectangular Shed', () => {
+		const azimuth = Math.PI / 6;
+		const { fixture, shedId } = obliqueShedFixture(azimuth);
+		const region = fixture.document.regions.find((candidate) => candidate.id === shedId)!;
+		const projections = region.footprint.points.map(
+			([x, z]) => x * Math.cos(azimuth) + z * Math.sin(azimuth)
+		);
+		const qMax = Math.max(...projections);
+		const peaks = region.footprint.points.filter(
+			(_, index) => Math.abs(projections[index]! - qMax) <= 1e-9
+		);
+		// The oblique rectangle genuinely has no positive-length high-eave stretch.
+		expect(peaks).toHaveLength(1);
+
+		const section = regionSectionOf(region, ELEVATION);
+		expect(section).not.toBeNull();
+		if (section === null) return;
+		expect(section.form).toBe('shed');
+		expect(section.ridge).toBeNull();
+		expect(section.high.point[0]).toBeCloseTo(peaks[0]![0], 9);
+		expect(section.high.point[1]).toBeCloseTo(peaks[0]![1], 9);
+		expect(section.midpoint).not.toBeNull();
+		expectSectionCovered(section, region.footprint.points);
 	});
 
 	it('drags a ridge vertically and horizontally in one previewed form entry', async () => {
