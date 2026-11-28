@@ -1,0 +1,158 @@
+/* §9 Fixtures and saved groups (D8s). Loaded after the sheet's own styles; reuses its tokens. */
+.fx-flow{display:grid;grid-template-columns:minmax(0,1fr) 28px minmax(0,1.1fr) 28px minmax(0,1fr);align-items:stretch;gap:0;margin:8px 0 4px}
+.fx-flow .door{display:grid;gap:8px}
+.fx-flow .box{font-size:13px}
+.fx-flow .box h4{font-size:13.5px}
+.fx-flow .arr{display:grid;place-items:center;color:var(--ink2);font-size:18px}
+.fx-flow .box p{margin:0;color:var(--ink2)}
+.fx-flow .box code{font-size:11.5px}
+@media(max-width:900px){.fx-flow{grid-template-columns:1fr}.fx-flow .arr{transform:rotate(90deg);height:24px}}
+
+/* journey layout */
+.fx-app{display:grid;grid-template-columns:236px minmax(0,1fr) 288px;gap:14px;align-items:start;margin-top:10px}
+.fx-app:focus{outline:none}
+.fx-app:focus-visible{outline:2px solid var(--moss);outline-offset:4px;border-radius:12px}
+.fx-side{display:grid;gap:10px;min-width:0}
+.fx-mid{min-width:0;display:grid;gap:8px}
+@media(max-width:1180px){.fx-app{grid-template-columns:220px minmax(0,1fr)}.fx-side{grid-column:1 / -1;grid-template-columns:288px minmax(0,1fr);align-items:start}}
+@media(max-width:860px){.fx-app{grid-template-columns:1fr}.fx-side{grid-template-columns:252px minmax(0,1fr)}.fx-app .card{width:252px}}
+@media(max-width:600px){.fx-side{grid-template-columns:1fr}}
+
+/* Library instrument mock */
+.fx-lib{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 2px 10px rgba(18,38,29,.08);overflow:hidden;font-size:12.5px;min-width:0}
+.fx-lib .lh{display:flex;align-items:center;gap:8px;padding:9px 10px 8px 12px;border-bottom:1px solid var(--line2)}
+.fx-lib .lh b{font-size:13.5px}
+.fx-lib .lh span{margin-left:auto;font:10.5px var(--mono);color:var(--ink2)}
+.fx-lib .lb{display:grid;grid-template-columns:70px minmax(0,1fr);min-height:330px}
+.fx-rail{border-right:1px solid var(--line2);padding:6px 4px;display:grid;align-content:start;gap:2px;background:var(--panel)}
+.fx-rail button{all:unset;box-sizing:border-box;cursor:pointer;display:grid;justify-items:center;gap:2px;padding:6px 2px 5px;border-radius:8px;color:var(--ink2);font-size:10.5px;line-height:1.15;text-align:center}
+.fx-rail button svg{display:block}
+.fx-rail button:hover{background:var(--moss-tint);color:var(--forest)}
+.fx-rail button[aria-pressed=true]{background:var(--forest);color:#fff}
+.fx-rail button:disabled{opacity:.4;cursor:default;background:none;color:var(--ink2)}
+.fx-rail button:focus-visible{outline:2px solid var(--moss);outline-offset:1px}
+.fx-shelf{padding:8px 8px 10px;display:grid;align-content:start;gap:4px;min-width:0}
+.fx-shelf h5{margin:4px 2px 2px;font:10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);display:flex;justify-content:space-between;gap:6px}
+.fx-shelf h5 i{font-style:normal;letter-spacing:0;text-transform:none}
+.fx-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.fx-tile{all:unset;box-sizing:border-box;cursor:pointer;display:grid;gap:3px;align-content:start;border:1px solid var(--line);border-radius:9px;padding:4px 4px 6px;background:#fff;min-width:0;position:relative}
+.fx-tile:hover{border-color:var(--moss)}
+.fx-tile[aria-pressed=true]{border:2px solid var(--forest);padding:3px 3px 5px}
+.fx-tile:focus-visible{outline:2px solid var(--moss);outline-offset:1px}
+.fx-tile .im{display:block;height:58px;border-radius:6px;overflow:hidden;background:var(--panel)}
+.fx-tile .im svg{display:block;width:100%;height:100%}
+.fx-tile .nm{font-size:11.5px;font-weight:600;color:var(--ink);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fx-tile .mt{font-size:10.5px;color:var(--ink2);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fx-tile.glyph .im{display:grid;place-items:center;color:var(--forest)}
+.fx-tile.old .im{background:repeating-linear-gradient(135deg,#f6f5f0 0 6px,#efede6 6px 12px)}
+.fx-tile .new{position:absolute;top:6px;right:6px;font:9.5px var(--mono);background:var(--forest);color:#fff;border-radius:4px;padding:0 4px}
+.fx-tile.flash{animation:fxflash 1.2s ease-out}
+@keyframes fxflash{0%{box-shadow:0 0 0 4px var(--gold-soft)}100%{box-shadow:0 0 0 0 transparent}}
+.fx-absent{border:1px dashed var(--line);border-radius:8px;padding:6px 8px;font-size:11px;color:var(--ink2);background:var(--panel)}
+.fx-oldnote{border:1px solid var(--line);border-radius:8px;padding:7px 8px;font-size:11.5px;color:var(--ink);background:var(--panel);display:grid;gap:6px}
+.fx-oldnote .acts{display:flex;gap:6px}
+.fx-oldnote button,.fx-disc button{all:unset;box-sizing:border-box;cursor:pointer;min-height:26px;padding:0 10px;border:1px solid var(--line);border-radius:7px;background:#fff;font-weight:600;font-size:12px;color:var(--forest);display:inline-flex;align-items:center}
+.fx-oldnote button:hover,.fx-disc button:hover{border-color:var(--moss);background:var(--moss-tint)}
+.fx-oldnote button:focus-visible,.fx-disc button:focus-visible{outline:2px solid var(--moss)}
+.fx-disc button.pri{background:var(--forest);color:#fff;border-color:var(--forest)}
+.fx-disc button.pri:hover{background:var(--forest2)}
+
+/* Stage */
+.fx-stage{position:relative;background:#8f948c;border-radius:10px;overflow:hidden;border:1px solid #7b8078}
+.fx-stage svg{display:block;width:100%;height:auto;touch-action:none;user-select:none;-webkit-user-select:none;cursor:default}
+.fx-stage.armed svg{cursor:crosshair}
+.fx-chip{position:absolute;left:10px;top:10px;display:flex;align-items:center;gap:8px;max-width:calc(100% - 20px);background:rgba(18,38,29,.92);color:#fff;border-radius:999px;padding:4px 6px 4px 12px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.fx-chip[hidden]{display:none}
+.fx-chip b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fx-chip span{opacity:.78;white-space:nowrap}
+.fx-chip button{all:unset;cursor:pointer;border-radius:999px;padding:2px 9px;background:rgba(255,255,255,.14);font-size:11.5px;white-space:nowrap}
+.fx-chip button:hover{background:rgba(255,255,255,.26)}
+.fx-chip button:focus-visible{outline:2px solid var(--moss)}
+.fx-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px}
+.fx-bar .seg button{padding:3px 10px}
+.fx-bar .sp{flex:1}
+.fx-bar .hist{font:11.5px var(--mono);color:var(--ink2)}
+.fx-btn{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:5px;min-height:28px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--forest);font-size:12.5px}
+.fx-btn:hover{border-color:var(--moss);background:var(--moss-tint)}
+.fx-btn:disabled{opacity:.45;cursor:default;background:#fff;border-color:var(--line)}
+.fx-btn:focus-visible{outline:2px solid var(--moss)}
+.fx-btn kbd{font:10.5px var(--mono);color:var(--ink2)}
+.fx-log{font:11.5px/1.5 var(--mono);color:var(--forest);background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 9px;min-height:92px;max-height:150px;overflow:auto}
+.fx-log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fx-log .w{color:var(--moss-ink)} .fx-log .n{color:var(--ink2)} .fx-log .r{color:#8a3d25}
+.fx-cardhost{min-height:120px}
+.fx-empty{border:1px dashed var(--line);border-radius:12px;padding:14px;font-size:12.5px;color:var(--ink2);background:var(--panel);width:288px;max-width:100%}
+
+/* Group / member Card additions (Light & Sky Card family) */
+.card .ch .grow{min-width:0;flex:1}
+.card .k a,.card .k button.ctx{all:unset;cursor:pointer;color:var(--moss-ink);text-decoration:underline;text-underline-offset:2px;text-transform:none;letter-spacing:0;font:11px system-ui,-apple-system,"Segoe UI",sans-serif}
+.card .k a:focus-visible,.card .k button.ctx:focus-visible{outline:2px solid var(--moss)}
+.fx-ib{all:unset;box-sizing:border-box;width:28px;height:28px;border-radius:7px;display:grid;place-items:center;cursor:pointer;color:var(--ink2);flex:none;margin-left:auto}
+.fx-ib:hover{background:var(--moss-tint);color:var(--forest)}
+.fx-ib[aria-expanded=true]{background:var(--gold-soft);color:var(--ink)}
+.fx-ib:focus-visible{outline:2px solid var(--moss)}
+.card .t input{font:inherit;font-weight:650;border:1px solid var(--moss);border-radius:6px;padding:0 4px;width:100%;box-sizing:border-box;outline:none}
+.fx-mrows{display:grid;padding:0 8px 6px}
+.fx-mrow{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;min-height:30px;padding:4px 6px;border-radius:7px;cursor:pointer;font-size:13px;color:var(--ink)}
+.fx-mrow:hover{background:var(--moss-tint)}
+.fx-mrow:focus-visible{outline:2px solid var(--moss)}
+.fx-mrow svg{flex:none;color:var(--ink2)}
+.fx-mrow .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fx-mrow .kd{color:var(--ink2);font-size:11.5px;white-space:nowrap}
+.fx-mrow .go{color:var(--ink2);font-size:16px;line-height:1}
+.fx-mrow.bad .kd{color:#8a3d25}
+.fx-save{border-top:1px solid var(--line2);padding:7px 10px 8px;display:grid;gap:5px}
+.fx-savebtn{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;justify-self:start;padding:4px 9px 4px 7px;border-radius:7px;border:1px solid var(--line);color:var(--forest);font-size:12.5px;font-weight:600;background:#fff}
+.fx-savebtn:hover{border-color:var(--moss);background:var(--moss-tint)}
+.fx-savebtn:disabled{color:#9aa09a;cursor:default;background:#fff;border-color:var(--line2)}
+.fx-savebtn:focus-visible{outline:2px solid var(--moss)}
+.fx-why{font-size:11.5px;color:#8a3d25;line-height:1.35}
+.fx-hint{font-size:11.5px;color:var(--ink2);line-height:1.35}
+.fx-ok{font-size:12px;color:var(--moss-ink);display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.fx-disc{border:1px solid var(--line);border-radius:8px;background:var(--parchment);padding:8px 9px;display:grid;gap:6px;font-size:12px;color:var(--ink)}
+.fx-disc p{margin:0;line-height:1.4}
+.fx-disc ul{margin:0;padding-left:16px;color:var(--ink2);font-size:11.5px}
+.fx-disc .acts{display:flex;gap:6px}
+.fx-menu{position:absolute;z-index:6;right:8px;top:44px;width:220px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(18,38,29,.18);padding:5px;font-size:13px}
+.fx-menu .mh{font-size:11px;color:var(--ink2);padding:5px 9px 2px}
+.fx-menu button{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;width:100%;cursor:pointer;padding:7px 9px;border-radius:8px;color:var(--ink)}
+.fx-menu button:hover,.fx-menu button:focus-visible{background:var(--moss-tint)}
+.fx-menu button:disabled{color:#a5aaa4;cursor:default;background:none}
+.fx-menu button.erase{color:#8a3d25}
+.fx-menu hr{border:0;border-top:1px solid var(--line2);margin:4px 0}
+.fx-menu .soon{font:10px var(--mono);color:var(--ink2)}
+.fx-cardwrap{position:relative;width:max-content;max-width:100%}
+.card .foot .ico{padding:4px 6px;display:grid;place-items:center}
+.card .foot button:disabled{color:#a5aaa4;cursor:default;background:none}
+.fx-rows{padding:0 12px 4px}
+.fx-rows .cr-top .rv{font-size:11.5px}
+.fx-note{font-size:11px;color:var(--ink2);padding:0 12px 8px}
+
+/* galleries */
+.fx-gal{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.fx-gal figure .fx-stage{border-radius:9px}
+.fx-gal figcaption{text-transform:none;letter-spacing:0;font:12px system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink2);margin-top:5px;line-height:1.35}
+.fx-gal figcaption b{color:var(--ink);font-weight:600;display:block;font-size:12.5px}
+@media(max-width:1000px){.fx-gal{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.fx-gal{grid-template-columns:1fr}}
+.fx-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(288px,1fr));gap:14px;align-items:start}
+.fx-cards figure{display:grid;gap:5px;justify-items:start}
+.fx-cards figcaption{text-transform:none;letter-spacing:0;font:12px system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink2);max-width:288px}
+.fx-cards figcaption b{color:var(--ink);font-weight:600}
+.fx-tilegal{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px;max-width:620px}
+.fx-amend{border-left:3px solid var(--ghost);padding:2px 0 2px 10px;margin:8px 0;font-size:13px;color:var(--ink2)}
+.fx-amend b{color:var(--ink)}
+.tag.d8s{border-color:#b9c8ef;background:#eef2fc;color:#23458f}
+@media (pointer:coarse){.fx-tile{min-height:44px}.fx-mrow{min-height:40px}.fx-btn{min-height:40px}.card .foot button{padding:8px 9px}}
+/* in the narrow Library column, fixture and My objects tiles read as rows: image left, two lines right */
+.fx-tiles.list{grid-template-columns:1fr;gap:5px}
+.fx-tiles.list .fx-tile{grid-template-columns:62px minmax(0,1fr);grid-template-rows:auto auto;column-gap:8px;row-gap:1px;align-items:center;padding:4px 6px 4px 4px}
+.fx-tiles.list .fx-tile[aria-pressed=true]{padding:3px 5px 3px 3px}
+.fx-tiles.list .fx-tile .im{grid-row:1 / span 2;height:42px}
+.fx-tiles.list .fx-tile .nm{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;align-self:end}
+.fx-tiles.list .fx-tile .mt{align-self:start}
+.fx-tiles.list .fx-tile .new{top:4px;right:4px}
+.fx-tiles.list .fx-tile.glyph .im svg{width:22px;height:22px}
+.fx-side>*,.fx-mid>*{min-width:0}
+.fx-log .u{color:var(--ink)}
+.fx-app{scroll-margin-top:56px}

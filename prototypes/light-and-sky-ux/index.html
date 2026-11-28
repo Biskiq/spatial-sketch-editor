@@ -337,6 +337,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
 .m-dim{font:11px var(--mono);background:rgba(18,38,29,.85);color:#fff;border-radius:5px;padding:2px 6px;white-space:nowrap}
 .verdict td:first-child{white-space:nowrap}
 </style>
+<link rel="stylesheet" href="fixtures.css">
 </head>
 <body>
 <header class="top">
@@ -344,7 +345,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
   <p class="lede">The final T2 design for light on the Stage, the Light Cards, Time, Sky and the Celestial Dial, Artwork framing and placement, and how they sit in the real editor shell. Revision 4, 13 November 2026. <b>Accepted by the owner on 13 November 2026 and ready for implementation</b>; the owner decisions are recorded in §8. This sheet holds no production code. PR #314 implements the earlier <code>fix.md</code> design on this branch; §7.4 lists what it ships and what this sheet changes. Every prototype is live; Cards, the Sky popover and the shell compositions are drawn at true pixel size. Stage diagrams are schematic in geometry but exact in what is drawn and what each grip writes.</p>
 </header>
 <nav aria-label="Sections">
-  <a href="#status">0 Status</a><a href="#identity">1 Identity</a><a href="#stage">2 Light on the Stage</a><a href="#cards">3 Light Cards</a><a href="#sky">4 Environment</a><a href="#artwork">5 Artwork and placement</a><a href="#shell">6 Shell</a><a href="#impl">7 Boundaries</a><a href="#decisions">8 Decisions</a>
+  <a href="#status">0 Status</a><a href="#identity">1 Identity</a><a href="#stage">2 Light on the Stage</a><a href="#cards">3 Light Cards</a><a href="#sky">4 Environment</a><a href="#artwork">5 Artwork and placement</a><a href="#shell">6 Shell</a><a href="#impl">7 Boundaries</a><a href="#decisions">8 Decisions</a><a href="#fixtures">9 Fixtures &amp; groups</a>
 </nav>
 <main>
 
@@ -396,6 +397,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
     <tr><td>This sheet, revision 3</td><td>Time at the right end of the World-controls bar; Beam and Soft edge as two rows; flat emitter disc; flat Sky glyphs; a floor sundial with a rim-mark fallback and a floating Sun</td><td>Replaced by the decisions above. A and B remain only as considered panels in §4.1; the sundial and rim mark are combined into the Celestial Dial (§4.2)</td></tr>
     <tr><td>This sheet before revision 2</td><td>Today/Proposed pairs, footprint-first beam, kelvin track, four icon families, decisions L1–W2</td><td>Removed. The owner decisions that closed them are recorded in §8</td></tr>
   </table></div>
+  <p class="note" style="margin-top:12px"><b>D8s amendment.</b> <a href="#fixtures">§9</a> adds fixtures and saved groups as one compound placement journey. It reuses the marks, Cards and lifecycle defined here and changes none of them. It awaits owner visual acceptance (D8 plan, P6) before D8p starts.</p>
 </section>
 
 <!-- =========================================================== 1 -->
@@ -425,7 +427,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
   <div class="g5">
     <div class="layer"><b>Emitter</b>The glyph and pick target. Constant size on screen.<br><i>editor · Stage marks</i></div>
     <div class="layer"><b>Editing guide</b>Axis, silhouette and grips for the selected light.<br><i>editor · Stage marks</i></div>
-    <div class="layer"><b>Physical fixture</b>An optional visible lamp body or model (S8).<br><i>Scene · authored object</i></div>
+    <div class="layer"><b>Physical fixture</b>A visible lamp body and its emitters, placed as one group (D8, <a href="#fixtures">§9</a>).<br><i>Scene · group of ordinary members</i></div>
     <div class="layer"><b>Actual illumination</b>What the render shows. It is never drawn as ink.<br><i>render only</i></div>
     <div class="layer"><b>Volumetric shaft</b>A future rendered effect with its own field. It is never a guide.<br><i>render · WebGPU</i></div>
   </div>
@@ -769,6 +771,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
       <tr><td>Refused</td><td>Red dashed ghost with the planner's own reason</td><td>0</td></tr>
       <tr><td>Refused on release</td><td>Stays red until the pointer moves; nothing created; still armed</td><td>0</td></tr>
       <tr><td>Placed</td><td>The subject is selected, and the tool stays armed</td><td>1</td></tr>
+      <tr><td>Fixture or group copy</td><td>The same states for a whole group: one compound ghost, with the mount (ceiling, overhead, wall or floor) shown in the chip. One <code>place-group-copy</code> per click (<a href="#fixtures">§9</a>)</td><td>1</td></tr>
     </table></div>
   </div>
 </section>
@@ -789,6 +792,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
     <div class="later">Looks tiles in Sky · S6</div>
     <div class="later">Light group: Scene grouping with a group Brightness multiplier · grouping slice. Shared strata stay deferred: G1 (G-2) ships the group Card without them, so this slot stays open</div>
     <div class="later">Area and line emitters · after S3</div>
+    <div class="later">Fixtures row in Lights and saved groups in My objects · D8d · D8f, drawn live in <a href="#fixtures">§9</a></div>
   </div>
   <div class="spec">
     <h3>Spec · focus order</h3>
@@ -833,7 +837,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
     <tr><td>Sky panel dials, the Celestial Dial, presets with edited and Reset</td><td><span class="tag t2">S2</span></td><td>P0 · S0 · S1</td></tr>
     <tr><td>Light it, Look through</td><td><span class="tag t2">S7 · S3</span></td><td>As the T2 README states</td></tr>
     <tr><td>Light groups: reuse Scene grouping; a non-destructive group Brightness multiplier that preserves each light's own values</td><td><span class="tag t2">G1</span></td><td>The grouping slice</td></tr>
-    <tr><td>Physical fixtures</td><td><span class="tag t2">S8</span></td><td>Licence</td></tr>
+    <tr><td>Physical fixtures and saved groups (<a href="#fixtures">§9</a>)</td><td><span class="tag t2">D8</span></td><td>D8p placement session; D8d needs a qualified, licensed fixture (D18); D8f needs G1 groups</td></tr>
     <tr><td>Volumetrics (World atmospheric scattering; per-Spot Visible Beam and scattering contribution), cascaded shadow maps, IES profiles</td><td><span class="tag gpu">WebGPU</span></td><td>After the renderer refactor, behind S0. The strategic renderer direction is unchanged</td></tr>
   </table></div>
   <h3>7.2 · Contract changes this design requires (not edited here)</h3>
@@ -927,6 +931,152 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
     <tr><td><i>Show influence</i></td><td>Viewing preferences (⚙)</td><td>An editor viewing preference, never serialized into the Scene or any light; it never reaches the visitor runtime</td></tr>
     <tr><td>Directional retirement</td><td>§7.3</td><td>Accepted; one PR with the format bump and strict refusal, no migration</td></tr>
 </table></div>
+</section>
+
+<!-- =========================================================== 9 -->
+<section id="fixtures">
+  <header><h2>9 · Fixtures and saved groups</h2><span><span class="tag d8s">D8s amendment</span> <span class="tag t2">awaiting owner · P6</span></span></header>
+  <p class="lede">A curated fixture and a saved group are two ways into <b>one compound placement</b>. Both arm the same ghost and the same session, and both write one <code>place-group-copy</code> that selects the new group. They differ only in where the origin comes from. This section amends the accepted target for D8 (<code>docs/plans/t2-look-atmosphere/d8-fixtures-rigs/implementation-plan.md</code>). It is proposed until the owner accepts it; D8p, D8d and D8f wait on that acceptance. The specimen uses mock tiles and specimen state only: nothing persists, and no production asset or Scene contract is involved.</p>
+
+  <h3>9.1 Two doors, one placement</h3>
+  <div class="fx-flow" role="img" aria-label="Fixture tile and My objects tile both arm one placement session, which writes one place-group-copy">
+    <div class="door">
+      <div class="box"><h4>Lights › Fixtures tile <span class="tag">D8d</span></h4><p>Origin from the mount: <code>overhead</code> (ceiling) or <code>wall</code>. The row exists only when a fixture ships.</p></div>
+      <div class="box"><h4>My objects group tile <span class="tag">D8f</span></h4><p>Origin <code>support</code>: whatever is below the pointer. Also reached from the Appearance Library's <i>Place copy in World</i>.</p></div>
+    </div>
+    <div class="arr" aria-hidden="true">→</div>
+    <div class="box rec"><h4>One placement session <span class="tag">D8p</span></h4><p>Cobalt ghost of every member · origin derived read-only with the planner's own query · mount tag in words · one gesture lease · red ghost and the planner's reason on refusal · Esc cancels with no write. No turning while placing.</p></div>
+    <div class="arr" aria-hidden="true">→</div>
+    <div class="box"><h4>One write</h4><p>One <code>place-group-copy</code>, one Undo. The new group is selected, named after its source with G1's suffix, and the tool stays armed (the §5 lifecycle).</p></div>
+  </div>
+
+  <h3>9.2 The journey, live</h3>
+  <p class="note">Start in <b>Lights</b>: choose a fixture, move over the room and click. Then click it once for the group and again for the body or the light. Save a group from its Card, open <b>My objects</b> and place a copy. Keys, when this panel has focus: <b>Esc</b> steps back, <b>⌘Z</b> / <b>⇧⌘Z</b> undo and redo, <b>⌫</b> erases the selection.</p>
+  <div class="ctl" style="margin-top:6px">
+    <div class="row"><span>This build</span><div class="seg" id="fxShips"><button data-v="yes" aria-pressed="true">Ships 3 fixtures</button><button data-v="no">Ships none (D18)</button></div></div>
+    <div class="row"><span>Duplicate</span><div class="seg" id="fxDup"><button data-v="g1" aria-pressed="true">G1 · +0.5 m X/Z</button><button data-v="local">O1 · +0.5 m along its own X</button></div><span class="note">Compare on the sconce: G1's offset lifts the copy off its wall.</span></div>
+  </div>
+  <div class="fx-app" id="fxApp" tabindex="0" aria-label="Fixtures and saved groups journey">
+    <div class="fx-lib" id="fxLib"></div>
+    <div class="fx-mid">
+      <div class="fx-bar"><button class="fx-btn" id="fxUndo">Undo <kbd>⌘Z</kbd></button><button class="fx-btn" id="fxRedo">Redo <kbd>⇧⌘Z</kbd></button><button class="fx-btn" id="fxEsc">Esc</button><span class="hist" id="fxHist"></span><span class="sp"></span><button class="fx-btn" id="fxReset">Reset</button></div>
+      <div class="fx-stage" id="fxStage"><svg id="fxSvg" viewBox="0 0 640 400" role="img" aria-label="Salon with a soffit, a landing, a dais, a doorway and an open terrace"></svg><div class="fx-chip" id="fxChip" hidden></div></div>
+    </div>
+    <div class="fx-side">
+      <div class="fx-cardhost" id="fxCard"></div>
+      <div><h3 style="margin-top:0">Writes</h3><div class="fx-log" id="fxLog" aria-live="polite"></div></div>
+    </div>
+  </div>
+  <p class="cap">The room: a closed Space with a 2.80 m ceiling, a Soffit region at 2.40 m along the left, a Landing at 1.10 m at the back right, a 0.30 m Dais, a doorway in the side wall and a terrace under open sky. Overhead elevations are what T1's overhead query would publish; the ghost reads them and the planner would resolve the same value.</p>
+
+  <h3>9.3 Tiles</h3>
+  <div class="grid">
+    <div class="fx-tilegal" id="fxTileGal"></div>
+    <div>
+      <ul>
+        <li><b>Fixture tile: a pre-rendered image.</b> One fixed camera and light, derived reproducibly at ingestion from the retained sources and pinned in the fixture record with the other derivatives. The editor never renders tiles at run time, and the tile cannot drift from the shipped bytes.</li>
+        <li><b>Two lines of text</b>: the fixture's label, and its mount in plain words, <i>Hangs from a ceiling</i> or <i>Mounts on a wall</i>. The light it carries is in the tooltip, not on the tile.</li>
+        <li><b>Saved group tile: the group mark, no image.</b> A saved group stores no thumbnail (plan §4.4, E8). Rendering one on the fly would need the World, and a stale image would lie about a detached copy. The count is read with the item.</li>
+        <li><b>Older format</b>: hatched, reads <i>Earlier version</i>. Choosing it never arms placement; it offers Remove only.</li>
+        <li>Pressed is the forest border, as for every Library tile. Choosing the armed tile again cancels, like Esc.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>9.4 Ghosts and refusals</h3>
+  <div class="fx-gal" id="fxGal"></div>
+  <div class="tw" style="margin-top:10px"><table>
+    <tr><th>Mark</th><th>Meaning</th><th>Grammar source</th></tr>
+    <tr><td>Cobalt dashed outline, 10% fill</td><td>Every member of the copy, where the click would put it</td><td>§1 cobalt = proposal or ghost</td></tr>
+    <tr><td>Cobalt canopy ring on the overhead + dashed plumb line + floor cross</td><td>Ceiling mount: the overhead the canopy uses, and the pointer's floor X/Z it hangs over</td><td>§1 dashed = derived (drop stem)</td></tr>
+    <tr><td>Short dashed normal + dashed wall tangent</td><td>Wall mount: the plane hit and the direction the fixture faces</td><td>§1 dashed = derived</td></tr>
+    <tr><td>Cobalt contact ellipse</td><td>Support origin: what the group stands on</td><td>§5 contact mark</td></tr>
+    <tr><td>Ghost emitter glyph and pool; Spot rays in cobalt</td><td>The light the copy brings, previewed before the click</td><td>§5 "The ghost lights the scene before the click"</td></tr>
+    <tr><td>Red dashed ghost + red tag</td><td>A candidate exists but the planner would refuse it; the tag is the planner's reason</td><td>§1 red = refusal</td></tr>
+    <tr><td>Red cross + red tag, no ghost</td><td>No candidate: nothing overhead, not a wall, nothing below</td><td>§5 "Nothing to sit on"</td></tr>
+    <tr><td>Dark tag</td><td>Mount intent in words: <i>Hangs from Soffit · 2.40 m</i>, <i>On Side wall · 1.75 m · faces out</i>, <i>On Dais · 0.30 m</i></td><td>§1 dark mono tag = live value</td></tr>
+  </table></div>
+
+  <h3>9.5 Selecting a placed fixture</h3>
+  <div class="fx-gal" id="fxSelGal"></div>
+  <ul style="margin-top:10px">
+    <li>The G1 grammar, unchanged: the first click selects the group, a second click its body or its emitter; Esc steps member → group → clear. Hover is leaf.</li>
+    <li>A fixture's emitter is hidden while idle, like any light (§2). It shows while its group is hovered or selected, while placement is armed, and when it is selected itself, so it can always be reached by the second click.</li>
+    <li>The move cross sits at the pivot on the support the fixture was placed from: the canopy on its overhead, the back-plate on its wall. Move and Turn are G1's and are drawn, not driven, here.</li>
+  </ul>
+
+  <h3>9.6 Cards</h3>
+  <div class="fx-cards" id="fxCardGal"></div>
+  <div class="spec">
+    <h3>Spec · placement lifecycle and Undo</h3>
+    <div class="tw"><table>
+      <tr><th>Moment</th><th>Stage</th><th>Card</th><th>Writes</th></tr>
+      <tr><td>Tile chosen</td><td>Armed. The chip reads <i>Placing &lt;name&gt; · Hangs from what is overhead / Point at a wall / Stands on what is below · Click to place · Esc cancels</i></td><td>Unchanged. The selection stays</td><td>0</td></tr>
+      <tr><td>Hover / Pressed</td><td>Cobalt ghost with the mount tag; on touch, Pressed shows the same ghost under the finger</td><td>Unchanged</td><td>0</td></tr>
+      <tr><td>No candidate</td><td>No ghost. A red tag says what is needed</td><td>Unchanged</td><td>0</td></tr>
+      <tr><td>Refused</td><td>Red dashed ghost and the planner's reason</td><td>Unchanged</td><td>0</td></tr>
+      <tr><td>Refused on release</td><td>Stays red until the pointer moves; still armed</td><td>Unchanged</td><td>0, logged</td></tr>
+      <tr><td>Placed</td><td>The new group is selected (gold contours); the tool stays armed for the next copy</td><td>The Group Card of the new group</td><td>1 <code>place-group-copy</code> · 1 Undo</td></tr>
+      <tr><td>Esc while armed</td><td>Disarms; no ghost</td><td>The last selection stays</td><td>0</td></tr>
+      <tr><td>Undo after placing</td><td>Body, light, cluster and any newly granted asset go together</td><td>Selection returns to what it was</td><td>−1</td></tr>
+      <tr><td>Save to My Objects</td><td>Nothing</td><td>In-place confirmation</td><td>0: no revision, no Undo step, no unsaved change</td></tr>
+    </table></div>
+    <h3>Spec · origins</h3>
+    <div class="tw"><table>
+      <tr><th>Entry</th><th>Origin</th><th>From the pointer</th><th>Tag</th><th>Refusal</th></tr>
+      <tr><td>Ceiling fixture</td><td><code>overhead</code></td><td>Any hit gives X/Z; the overhead query gives Y (lowest above the floor; a region beats the lid); yaw 0</td><td>Hangs from &lt;overhead&gt; · 2.40 m</td><td>Nothing overhead to hang from here · &lt;name&gt; would reach the floor here</td></tr>
+      <tr><td>Wall fixture</td><td><code>wall</code></td><td>A hit with |n.y| ≤ 0.2 gives the point; yaw is the normal's heading</td><td>On &lt;wall&gt; · 1.75 m · faces out</td><td>Point at a wall · &lt;name&gt; would reach the floor here</td></tr>
+      <tr><td>Saved group</td><td><code>support</code></td><td>The support below the pointer; members keep their heights above it; yaw 0</td><td>On the floor / On Dais · 0.30 m</td><td>Nothing below to stand on here · names the member over a void</td></tr>
+    </table></div>
+    <h3>Spec · words</h3>
+    <div class="tw"><table>
+      <tr><th>Code</th><th>Where it shows</th><th>Words</th></tr>
+      <tr><td><code>no-overhead-support</code></td><td>Ghost tag, no ghost</td><td>Nothing overhead to hang from here</td></tr>
+      <tr><td><code>not-a-wall</code></td><td>Ghost tag, no ghost</td><td>Point at a wall</td></tr>
+      <tr><td><code>no-support</code> (planner, member below its support)</td><td>Red ghost</td><td>&lt;name&gt; would reach the floor here <span class="tag d8s">D8s</span></td></tr>
+      <tr><td><code>no-support</code> (support origin)</td><td>Red tag</td><td>Nothing below to stand on here · &lt;member&gt;</td></tr>
+      <tr><td><code>unknown_asset</code> · <code>missing-definition</code> · <code>missing-contact-metadata</code></td><td>Red ghost</td><td>This object is not available in this version.</td></tr>
+      <tr><td><code>incompatible-resource</code></td><td>Red ghost</td><td>This project holds a different copy of &lt;name&gt;.</td></tr>
+      <tr><td><code>invalid-template</code></td><td>Tile note</td><td>This group cannot be read.</td></tr>
+      <tr><td><code>unsupported_format_version</code></td><td>Tile note, Remove only</td><td>Made with an earlier development version; remove it or save it again.</td></tr>
+      <tr><td><code>ineligible-member</code></td><td>Group Card, beside a disabled Save</td><td>Artwork stays in this project · Imported models stay in this project · Planes cannot be saved in a group · &lt;name&gt; cannot be saved yet</td></tr>
+      <tr><td><code>group-too-large</code></td><td>Group Card, beside a disabled Save</td><td>Groups of more than 64 items cannot be saved.</td></tr>
+      <tr><td>Finish rule (not a refusal)</td><td>Group Card disclosure</td><td>Finishes stay in this project; the copy uses each object's base material.</td></tr>
+    </table></div>
+    <h3>Spec · what each slice must match</h3>
+    <div class="tw"><table>
+      <tr><th>Slice</th><th>Matches on the live Stage</th></tr>
+      <tr><td>D8p</td><td>One session for all three origins; the ghost, tags and red states in 9.4; the chip; commit on release; Esc with no write; the new group selected and the tool still armed; one Undo</td></tr>
+      <tr><td>D8d</td><td>The Fixtures row after Point and Spot, present only when a fixture ships; the tile in 9.3; the fixture group Card and the drill into body and Light Card in 9.5 and 9.6</td></tr>
+      <tr><td>D8f</td><td>Save on the group Card in its own row above the foot; disabled with the first reason; the Finish disclosure; the confirmation; My objects group tiles arming the same session with a <code>support</code> origin; older items Remove only</td></tr>
+    </table></div>
+  </div>
+
+  <h3>9.7 Decisions and challenges</h3>
+  <div class="g2">
+    <div class="box rec">
+      <h4>Decided in this amendment</h4>
+      <ol>
+        <li><b>One session, two doors.</b> Fixtures and saved groups share every mark, word and lifecycle state; only the origin differs.</li>
+        <li><b>No turning while placing.</b> The plan sets yaw from the wall normal or 0. A rotate gesture during placement would be a second writer of yaw; the group's bent arrow turns it after the click.</li>
+        <li><b>Save sits in its own Card row, above the foot.</b> The plan says "Card foot", but the G1 foot (frame, Light it, Duplicate, Ungroup) is full at 288 px, and Save is a Library action, not a Scene edit. A separate row keeps the reason line next to the button.</li>
+        <li><b>An ineligible Save is disabled with its reason visible</b>, not a button that refuses after the click. This is G1's set-Card precedent and reads the same words sooner.</li>
+        <li><b>Save is one click when nothing drops.</b> The disclosure appears only when a Finish would drop, and only Save inside it writes the item.</li>
+        <li><b>The drilled emitter shows the ordinary Light Card</b>; only its context line names the group. The body Card adds one line: re-aiming the light leaves the body where it is.</li>
+        <li><b>Refusal copy</b> as in the words table. One addition: a pendant or sconce that would pass its support reads "&lt;name&gt; would reach the floor here", because "Nothing below to stand on" is wrong for a hanging body.</li>
+        <li><b>The Card family is this sheet's.</b> The group and member Cards use the Light &amp; Sky Card (white, 288 px, mono kind line) so the drill from group to Light Card never changes family. The World sheet's Card typography is the same grammar at a larger size; the two converge in production.</li>
+      </ol>
+    </div>
+    <div class="box">
+      <h4>For the owner</h4>
+      <ol>
+        <li><b>O1 · Duplicate on a wall fixture.</b> G1 offsets every copy +0.5 m on X and Z, so a sconce on the side wall gets a copy floating 0.5 m into the room. Recommendation: offset +0.5 m along the group's own X axis for every group. That is along the wall for a wall fixture, and still a visible offset for a floor group. It is a small change to landed G1 behaviour, so it needs the owner. Toggle it above.</li>
+        <li><b>O2 · Moving a wall fixture.</b> G1 Move slides a group on the floor plane, so it can pull a sconce off its wall. D8 stores no wall relation. Recommendation: accept this for D8 and say so in D8d's notes. A move that slides along the wall belongs to whichever slice adds a mount relation.</li>
+        <li><b>O3 · A saved fixture keeps its height.</b> A saved group inserts with a <code>support</code> origin, so a saved pendant hangs at the same height above the floor in any room and does not re-hang from a lower ceiling (9.4, last case). Recommendation: accept it as P4 states. Re-hanging needs the source to remember a mount, which the plan does not store.</li>
+        <li><b>Light it on a fixture group</b> stays as G1 shows it (it adds a light aimed at the group). It is kept rather than hidden, because hiding it would be a G1 change with little gain.</li>
+      </ol>
+    </div>
+  </div>
 </section>
 
 </main>
@@ -2438,5 +2588,6 @@ function initAll() {
 initAll();
 let rsz = 0; window.addEventListener('resize', () => { cancelAnimationFrame(rsz); rsz = requestAnimationFrame(() => { drawPlacement(); drawShell(); }); });
 </script>
+<script src="fixtures.js"></script>
 </body>
 </html>

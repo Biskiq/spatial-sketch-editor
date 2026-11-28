@@ -105,7 +105,8 @@ export function renderLibrary() {
     if (k === 'materials' && L.kind === 'materials') for (const c of [{ id: 'all', label: 'All materials' }, ...TAXONOMY]) rail.append(h('button', { class: 'ix sub2' + (L.cat === c.id ? ' on' : ''), onClick: () => setUi({ library: { cat: c.id } }) }, h('span', { class: 'nm' }, c.label)));
   }
   const grid = h('div', { class: 'lb-grid' });
-  if (L.kind !== 'materials') grid.append(futureKind(L.kind));
+  if (L.kind === 'objects' && (L.source === 'mine' || L.source === 'all')) grid.append(savedGroups(L.source === 'all')), grid.append(futureKind(L.kind));
+  else if (L.kind !== 'materials') grid.append(futureKind(L.kind));
   else if (L.source === 'sources') grid.append(futureSource());
   else {
     const gs = entries(); let any = false;
@@ -241,6 +242,41 @@ function detail(x) {
       seg([['studio', 'Studio'], ['grazing', 'Grazing'], ['world', 'World']], L.light, (v) => setUi({ library: { light: v } }), 'mseg'),
       h('button', { class: 'stepb', 'aria-label': 'Turn the light', title: 'Turn the light', onClick: () => setUi({ library: { turn: L.turn >= 1.2 ? -1.2 : +(L.turn + 0.4).toFixed(1) } }) }, '↻')),
     facts, explain, acts);
+}
+
+// ------------------------------------------------------------------ saved groups (T2 D8s specimen)
+// My library under Objects lists saved groups (D8f). Specimen state only: nothing persists, and the
+// live placement journey lives in ../light-and-sky-ux/#fixtures. A saved group has no thumbnail
+// (D8 §4.4): the tile is the group mark and its count. Placing opens the World, never paints here.
+const SAVED_GROUPS = [
+  { id: 'lib-reading', name: 'Reading corner', members: ['Armchair · Object', 'Side table · Object', 'Reading light · Point light'], finishes: ['Side table · Oiled walnut'], saved: 'from Tower House' },
+  { id: 'lib-plinth', name: 'Plinth and spot', members: ['Plinth · Form', 'Picture spot · Spot light'], finishes: [], saved: 'from Gallery 2' },
+  { id: 'lib-showcase', name: 'Showcase', older: true, saved: 'earlier version' }
+];
+let groupSel = null; const removedGroups = new Set();
+const GROUP_MARK = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="8" y="3.5" width="12.5" height="12.5" rx="2.5"/><path d="M5.5 7.5H5A1.5 1.5 0 0 0 3.5 9v10A1.5 1.5 0 0 0 5 20.5h10a1.5 1.5 0 0 0 1.5-1.5v-.5"/></svg>';
+function savedGroups(compact) {
+  const list = SAVED_GROUPS.filter((g) => !removedGroups.has(g.id));
+  const wrap = h('div', { class: 'lb-sg' }, h('h6', { class: 'lb-g' }, compact ? 'My library · groups' : 'Saved groups', h('span', {}, String(list.length))));
+  if (!list.length) { wrap.append(h('div', { class: 'lb-empty' }, 'No saved groups. Save one from a Group Card in the World.')); return wrap; }
+  const row = h('div', { class: 'sg-row' });
+  for (const g of list) {
+    const t = h('button', { class: 'sg-t' + (g.older ? ' older' : '') + (groupSel === g.id ? ' on' : ''), 'aria-pressed': String(groupSel === g.id), title: g.older ? `${g.name} · earlier version` : `${g.name} · ${g.members.length} items`, onClick: () => { groupSel = groupSel === g.id ? null : g.id; setUi({}); } },
+      h('span', { class: 'sg-th' }), h('b', {}, g.name), h('span', { class: 'sub' }, g.older ? 'Earlier version' : `Group · ${g.members.length} items`));
+    t.querySelector('.sg-th').innerHTML = GROUP_MARK; row.append(t);
+  }
+  wrap.append(row);
+  const g = list.find((x) => x.id === groupSel);
+  if (g) {
+    const remove = h('button', { class: 'btn ghost', onClick: () => { removedGroups.add(g.id); groupSel = null; toast(`Removed ${g.name} from My library · copies already placed stay`); setUi({}); } }, 'Remove from My library');
+    wrap.append(g.older
+      ? h('div', { class: 'sg-d' }, h('b', {}, g.name), h('p', { class: 'note' }, 'Saved by an earlier version of Biskiq, so it can’t be placed. Remove it, or keep it for when it can be read again.'), h('div', { class: 'acts' }, remove))
+      : h('div', { class: 'sg-d' }, h('b', {}, g.name), h('span', { class: 'note-sm' }, `Saved ${g.saved}`),
+        h('ul', {}, g.members.map((m) => h('li', {}, m))),
+        h('p', { class: 'note' }, g.finishes.length ? `Finishes stayed in their project: ${g.finishes.join(', ')}. Copies arrive with the default look.` : 'Nothing was left behind.'),
+        h('div', { class: 'acts' }, h('a', { class: 'btn', href: `../light-and-sky-ux/index.html?d8=place&item=${g.id}#fixtures` }, 'Place a copy in World ›'), remove)));
+  }
+  return wrap;
 }
 
 // ------------------------------------------------------------------ future kinds and sources
