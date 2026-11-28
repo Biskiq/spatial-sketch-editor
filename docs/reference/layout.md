@@ -310,9 +310,12 @@ covered Wall body strip (both faces, resolved ends, mitres and bevel or keel jun
 certified, not sampled: each strip cell is a ruled quad whose top is linear between Wall-top knots,
 so `D` is bilinear on each side of the ridge, and the certifier enumerates cell corners, footprint
 vertices, cell-edge and footprint-edge crossings, ridge crossings and the closed-form stationary
-points along each footprint edge's preimage, within `1e-9` m. A folded cell or any other unproven
-case reads **Not certified** (`unavailable`) and refuses both fits
-(`region_wall_extrema_uncertified`).
+points along each footprint edge's preimage. Each reading carries a floating-point error bound
+computed in a frame local to the footprint, so it holds at any world position; the result is
+certified only when both extrema are pinned within `1e-9` m. A folded or degenerate cell, an
+ill-conditioned station or any other unproven case reads **Not certified** (`unavailable`) and
+refuses both fits (`region_wall_extrema_uncertified`). A Junction wedge is solid, and read, only up
+to the highest band where both Walls are solid, as the rendered Wall body is.
 
 **Vertical fits under a sloped form.** Fit roof to walls moves the eave by `−min contact`, to first
 contact. Fit walls to roof takes every chosen Wall whose centerline lies in the footprint (others

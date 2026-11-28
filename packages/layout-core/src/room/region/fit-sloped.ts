@@ -318,7 +318,7 @@ function profiledExtrema(
 	const topProfile = compiledWallTopProfile(slice, wall.length);
 	const profiled = { ...wall, height: slice.height, topProfile };
 	const pieces = compiledWallStrip(profiled, ends, floorElevation).map((piece) =>
-		piece.kind === 'patch'
+		piece.kind === 'patch' && piece.source === 'junction-keel'
 			? {
 					...piece,
 					topY:

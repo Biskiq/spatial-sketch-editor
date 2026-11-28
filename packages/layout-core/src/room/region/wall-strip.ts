@@ -34,6 +34,7 @@ import type {
 	CompiledLegJoin,
 	CompiledPhysicalWall,
 } from '../../geometry/types';
+import { wallEndReachPoint } from '../../wall/end-reach';
 import { compiledWallEndTop, compiledWallTopAt, compiledWallTopKnots } from '../../wall/wall-top';
 
 /** The resolved Junction ends of one Wall, as `legJoinsByWall` returns them. */
@@ -69,7 +70,7 @@ export type WallStripPiece = WallStripCell | WallStripPatch;
 
 export type WallStripWall = Pick<
 	CompiledPhysicalWall,
-	'wallId' | 'thickness' | 'height' | 'topProfile' | 'samples' | 'openings'
+	'wallId' | 'thickness' | 'height' | 'topProfile' | 'samples' | 'openings' | 'sections'
 >;
 
 type StripSample = {
@@ -101,7 +102,19 @@ export function compiledWallStrip(
 		const topAt = (distance: number) =>
 			floorElevation +
 			(wall.topProfile ? compiledWallTopAt(wall.topProfile, distance) : wall.height);
-		const reach = endReach(samples, length, clipStart, clipEnd, cornerStart, cornerEnd);
+		const reach = (side: 'front' | 'back', sample: StripSample): LayoutVec2 | null =>
+			sample.corner !== null
+				? null
+				: wallEndReachPoint(
+						samples,
+						sample.distance,
+						clipStart <= LAYOUT_GEOMETRY_EPSILON
+							? ownCornerPoint(cornerStart[side], 'current')
+							: null,
+						clipEnd >= length - LAYOUT_GEOMETRY_EPSILON
+							? ownCornerPoint(cornerEnd[side], 'previous')
+							: null,
+					);
 		let previous: { front: LayoutVec2; back: LayoutVec2; top: number; distance: number } | null =
 			null;
 		for (const sample of stations) {
@@ -202,48 +215,6 @@ function stationSample(
 	return { point: last.point, normal: last.normal, distance: last.distance, corner };
 }
 
-/**
- * At an untrimmed end a face starts at its resolved corner, which can lie
- * ahead of the end station (the inner side of a mitre reaches
- * `half * cot(theta / 2)` along the Wall). A station inside that reach — a
- * Wall-top knot or a curve sample — has no body on that face, so its
- * cross-section ends at the corner itself. The cell between the end and that
- * station then narrows to a triangle instead of folding, and the strip still
- * covers exactly the Wall body.
- */
-function endReach(
-	samples: WallStripWall['samples'],
-	length: number,
-	clipStart: number,
-	clipEnd: number,
-	cornerStart: CompiledEndCorner,
-	cornerEnd: CompiledEndCorner,
-): (side: 'front' | 'back', sample: StripSample) => LayoutVec2 | null {
-	const first = samples[0]!;
-	const last = samples.at(-1)!;
-	const along = (point: LayoutVec2, origin: LayoutVec2, tangent: LayoutVec2) =>
-		(point[0] - origin[0]) * tangent[0] + (point[1] - origin[1]) * tangent[1];
-	const startOpen = clipStart <= LAYOUT_GEOMETRY_EPSILON;
-	const endOpen = clipEnd >= length - LAYOUT_GEOMETRY_EPSILON;
-	return (side, sample) => {
-		if (sample.corner !== null) return null;
-		if (startOpen) {
-			const corner = ownCornerPoint(cornerStart[side], 'current');
-			if (sample.distance < along(corner, first.point, first.tangent) - LAYOUT_GEOMETRY_EPSILON)
-				return corner;
-		}
-		if (endOpen) {
-			const corner = ownCornerPoint(cornerEnd[side], 'previous');
-			if (
-				sample.distance >
-				length + along(corner, last.point, last.tangent) + LAYOUT_GEOMETRY_EPSILON
-			)
-				return corner;
-		}
-		return null;
-	};
-}
-
 /** The resolved corner of one end, or the square corner of a free end. */
 function endCorner(
 	join: CompiledLegJoin | null,
@@ -283,7 +254,10 @@ function ownCornerPoint(side: CompiledCornerSide, wall: 'previous' | 'current'):
 /**
  * The wedge a seam-owning end fills between its own corner points and its
  * neighbour's: emitted for a bevel, or when both endpoints open onto an
- * Opening. Its top is the higher of the two endpoint tops, as the mesh's.
+ * Opening. The wedge is solid only where **both** endpoint profiles are solid
+ * (the mesh caps a one-sided band vertically and leaves it open above), so its
+ * top is the top of the highest both-solid band: `min` of the two end tops
+ * when both Walls are solid there.
  */
 function wedgePatches(
 	wall: WallStripWall,
@@ -323,8 +297,16 @@ function wedgePatches(
 	const backB = back.kind === 'bevel' ? back.b0 : back.apex;
 	const outer = back.kind === 'bevel' ? outerApex(sample.point, prev, cur) : null;
 	const ownTop = compiledWallEndTop(wall.topProfile, wall.height, atEnd, length);
-	const neighborTop = neighbor.endpointSolidBands.at(-1)?.topY ?? wall.height;
-	const topY = floorElevation + Math.max(ownTop, neighborTop);
+	const solidTop = bothSolidTop(
+		ownEndpointIntervals(wall, atEnd ? length : 0, ownTop),
+		mergedIntervals(
+			neighbor.endpointSolidBands
+				.filter((band) => band.solid)
+				.map((band) => [band.bottomY, band.topY] as const),
+		),
+	);
+	if (solidTop === null) return [];
+	const topY = floorElevation + solidTop;
 	const triangles: LayoutVec2[][] = [[frontA, frontB, backA]];
 	if (outer) triangles.push([frontB, backB, backA], [backA, backB, outer]);
 	return triangles
@@ -336,6 +318,53 @@ function wedgePatches(
 			source: 'junction-wedge',
 			end: atEnd ? 'end' : 'start',
 		}));
+}
+
+type Interval = readonly [number, number];
+
+/**
+ * This Wall's solid vertical intervals at one endpoint, from its compiled
+ * sections. A sill ends at its own height; every other section reaches the
+ * Wall's end top `ownTop` (a compiled section top is the span maximum, and a
+ * fit candidate's new top may exceed it).
+ */
+function ownEndpointIntervals(wall: WallStripWall, distance: number, ownTop: number): Interval[] {
+	const intervals: Interval[] = [];
+	for (const section of wall.sections) {
+		if (
+			distance < section.startDistance - LAYOUT_GEOMETRY_EPSILON ||
+			distance > section.endDistance + LAYOUT_GEOMETRY_EPSILON
+		)
+			continue;
+		const sill = section.kind === 'side' && section.openingId !== undefined;
+		intervals.push([section.bottomY, sill ? Math.min(section.topY, ownTop) : ownTop]);
+	}
+	return mergedIntervals(intervals);
+}
+
+function mergedIntervals(intervals: readonly Interval[]): Interval[] {
+	const sorted = intervals
+		.filter(([lo, hi]) => hi > lo + LAYOUT_GEOMETRY_EPSILON)
+		.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+	const merged: Array<[number, number]> = [];
+	for (const [lo, hi] of sorted) {
+		const last = merged.at(-1);
+		if (last && lo <= last[1] + LAYOUT_GEOMETRY_EPSILON) last[1] = Math.max(last[1], hi);
+		else merged.push([lo, hi]);
+	}
+	return merged;
+}
+
+/** The top of the highest band both interval sets cover, or `null` if none overlap. */
+function bothSolidTop(own: readonly Interval[], neighbor: readonly Interval[]): number | null {
+	let top: number | null = null;
+	for (const [aLo, aHi] of own) {
+		for (const [bLo, bHi] of neighbor) {
+			const hi = Math.min(aHi, bHi);
+			if (hi - Math.max(aLo, bLo) > LAYOUT_GEOMETRY_EPSILON) top = Math.max(top ?? hi, hi);
+		}
+	}
+	return top;
 }
 
 /** A degree >= 3 sector keel this end owns, at the top of its highest band. */

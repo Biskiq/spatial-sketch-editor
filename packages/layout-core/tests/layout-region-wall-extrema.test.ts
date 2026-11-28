@@ -26,6 +26,7 @@ import {
 	compiledWallStrip,
 	planCreateRegion,
 	planFitRegionToWalls,
+	planFitWallsToRegion,
 	regionWallRelations,
 	REGION_WALL_EXTREMA_TOLERANCE_METERS,
 	REGION_WALL_RELATION_EPSILON,
@@ -302,6 +303,31 @@ describe('T-R9 — a Wall-top knot inside the mitre reach', () => {
 		expect(reference.min - certified.contact.clearance).toBeLessThan(1e-6);
 		expect(certified.gap.clearance - reference.max).toBeLessThan(1e-6);
 	});
+
+	// The apex section ends at the inner mitre corner (5.9, 0.1), so the end
+	// cell's face collapses there and its station is unknowable at that point;
+	// both end tops are read at the corner itself, which pins the reading.
+	for (const offset of [0, 1e-13, 1e-11, 1e-9, 1e-6]) {
+		it(`certifies a roof edge ending ${offset} m inside the collapsed inner corner`, () => {
+			const document = documentOf({ a: [0, 0], b: [6, 0], c: [6, 4] }, [
+				wall('ab', 'a', 'b', {
+					thickness: 0.2,
+					top: { kind: 'gable', startRise: 0, endRise: 0, apexRise: 1, apexOffset: 5.95 }
+				}),
+				wall('bc', 'b', 'c', { thickness: 0.2 })
+			]);
+			const pieces = stripOf(compile(document), 'ab');
+			const corner: LayoutVec2 = [5.9 - offset, 0.1 - offset];
+			for (const azimuth of [Math.PI / 2, -Math.PI / 2, 0.3]) {
+				const roof = facts({ kind: 'shed', rise: 2, azimuth }, [[-1, -1], [7, -1], corner, [-1, 0.1 - offset]], 3.6, 0.3);
+				const certified = regionWallVerticalExtrema(roof, pieces, 'ab', REGION_WALL_RELATION_EPSILON);
+				if (certified.kind !== 'certified') throw new Error(`${azimuth}: ${JSON.stringify(certified)}`);
+				const reference = denseReference(roof, pieces);
+				expect(reference.min).toBeGreaterThanOrEqual(certified.contact.clearance - REGION_WALL_EXTREMA_TOLERANCE_METERS);
+				expect(reference.max).toBeLessThanOrEqual(certified.gap.clearance + REGION_WALL_EXTREMA_TOLERANCE_METERS);
+			}
+		});
+	}
 });
 
 describe('T-R9 — no proof, no reading', () => {
@@ -319,5 +345,168 @@ describe('T-R9 — no proof, no reading', () => {
 			stationB: 1
 		};
 		expect(regionWallVerticalExtrema(roof, [folded], 'w', REGION_WALL_RELATION_EPSILON).kind).toBe('uncertified');
+	});
+});
+
+describe('T1 V3b — an unequal-height bevel reads its real Junction solid', () => {
+	// The wedge is solid only where both endpoints are: up to the lower Wall's
+	// 2.4 m, never the taller 3 m. `region-strip-mesh-reference.test.ts` holds
+	// the same Junctions against the rendered mesh.
+	const shed: LayoutRegionForm = { kind: 'shed', rise: 1, azimuth: Math.PI / 2 };
+	const footprint: LayoutVec2[] = [[-3, -3], [12, -3], [12, 9], [-3, 9]];
+	const bevel = () =>
+		documentOf({ a: [0, 0], b: [8, 0], c: [1, 1.6] }, [
+			wall('ab', 'a', 'b', { height: 3 }),
+			wall('bc', 'b', 'c', { height: 2.4 })
+		]);
+
+	function roofed() {
+		const created = planCreateRegion({
+			baseline: bevel(),
+			capture: captureFor('v3b-bevel-unequal'),
+			intent: { role: 'overhead', footprint, elevation: 3.5, thickness: 0.3 }
+		});
+		if (created.kind !== 'success') throw new Error(created.rejection.message);
+		const document = structuredClone(created.document) as LayoutDocumentWallFirst;
+		document.regions[0]!.form = shed;
+		return { document, regionId: created.regionId };
+	}
+
+	it('caps every wedge patch at the lower end top', () => {
+		const geometry = compile(bevel());
+		const wedges = ['ab', 'bc'].flatMap((wallId) => stripOf(geometry, wallId).filter((piece) => piece.kind === 'patch'));
+		expect(wedges.length).toBeGreaterThan(0);
+		for (const wedge of wedges) expect(wedge.kind === 'patch' && wedge.topY).toBeCloseTo(2.4, 12);
+	});
+
+	it('fits the roof to the lower Wall at its own first contact', () => {
+		const { document, regionId } = roofed();
+		const elevations: number[] = [];
+		for (const wallId of ['ab', 'bc']) {
+			const plan = planFitRegionToWalls(document, compile(document), regionId, [wallId]);
+			if (plan.kind !== 'success') throw new Error(plan.rejection.message);
+			const region = plan.document.regions[0]!;
+			elevations.push(region.elevation);
+			const extrema = regionWallVerticalExtrema(
+				facts(shed, footprint, region.elevation, 0.3),
+				stripOf(compile(plan.document), wallId),
+				wallId,
+				REGION_WALL_RELATION_EPSILON
+			);
+			if (extrema.kind !== 'certified') throw new Error(JSON.stringify(extrema));
+			expect(Math.abs(extrema.contact.clearance)).toBeLessThan(1e-9);
+		}
+		// The lower Wall's own fit sits 0.6 m below the taller one's, not on it.
+		expect(elevations[0]! - elevations[1]!).toBeCloseTo(0.6, 6);
+	});
+
+	it('fits both Walls to the roof so both read meets', () => {
+		const { document, regionId } = roofed();
+		const roof = planFitRegionToWalls(document, compile(document), regionId, ['ab', 'bc']);
+		if (roof.kind !== 'success') throw new Error(roof.rejection.message);
+		const fitted = planFitWallsToRegion(roof.document, compile(roof.document), regionId, ['ab', 'bc']);
+		if (fitted.kind !== 'success') throw new Error(fitted.rejection.message);
+		const relations = regionWallRelations(compile(fitted.document), fitted.document.regions[0]!);
+		if (relations.kind !== 'relations') throw new Error(JSON.stringify(relations));
+		expect(relations.relations.map((relation) => [relation.wallId, relation.reading])).toEqual([
+			['ab', 'meets'],
+			['bc', 'meets']
+		]);
+	});
+});
+
+describe('T1 V3b — numerical certification', () => {
+	const footprint: LayoutVec2[] = [[1.3, -2], [12, -2], [12, 6], [-0.4, 6]];
+	const shed: LayoutRegionForm = { kind: 'shed', rise: 2, azimuth: 0.35 };
+	const shift = (point: LayoutVec2, by: LayoutVec2): LayoutVec2 => [point[0] + by[0], point[1] + by[1]];
+	function moved(pieces: readonly WallStripPiece[], by: LayoutVec2, lift = 0): WallStripPiece[] {
+		return pieces.map((piece) =>
+			piece.kind === 'cell'
+				? {
+						...piece,
+						fa: shift(piece.fa, by),
+						fb: shift(piece.fb, by),
+						ba: shift(piece.ba, by),
+						bb: shift(piece.bb, by),
+						topA: piece.topA + lift,
+						topB: piece.topB + lift
+					}
+				: { ...piece, polygon: piece.polygon.map((point) => shift(point, by)), topY: piece.topY + lift }
+		);
+	}
+
+	it('certifies the same extrema far from the origin: the 1000 m limit is on dimensions, not positions', () => {
+		const pieces = stripOf(compile(curvedSlopeDocument()), 'w');
+		const here = regionWallVerticalExtrema(facts(shed, footprint, 2.6, 0.3), pieces, 'w', REGION_WALL_RELATION_EPSILON);
+		if (here.kind !== 'certified') throw new Error(JSON.stringify(here));
+		for (const by of [[1e4, -2e4], [1.5e5, -3e5]] as LayoutVec2[]) {
+			const far = regionWallVerticalExtrema(
+				facts(shed, footprint.map((point) => shift(point, by)), 2.6, 0.3),
+				moved(pieces, by),
+				'w',
+				REGION_WALL_RELATION_EPSILON
+			);
+			if (far.kind !== 'certified') throw new Error(JSON.stringify(far));
+			expect(Math.abs(far.contact.clearance - here.contact.clearance)).toBeLessThan(REGION_WALL_EXTREMA_TOLERANCE_METERS);
+			expect(Math.abs(far.gap.clearance - here.gap.clearance)).toBeLessThan(REGION_WALL_EXTREMA_TOLERANCE_METERS);
+			expect(far.contact.point[0] - by[0]).toBeCloseTo(here.contact.point[0], 6);
+			expect(far.contact.point[1] - by[1]).toBeCloseTo(here.contact.point[1], 6);
+		}
+	});
+
+	it('refuses a world height whose rounding alone exceeds the certified tolerance', () => {
+		const pieces = moved(stripOf(compile(curvedSlopeDocument()), 'w'), [0, 0], 1e9);
+		const extrema = regionWallVerticalExtrema(facts(shed, footprint, 2.6 + 1e9, 0.3), pieces, 'w', REGION_WALL_RELATION_EPSILON);
+		expect(extrema.kind).toBe('uncertified');
+		if (extrema.kind === 'uncertified') expect(extrema.message).toMatch(/can only be bounded to .* m/);
+	});
+
+	it('holds a steep profile against the dense reference', () => {
+		const steep = facts({ kind: 'gable', rise: 40, azimuth: 0.35, ridgeOffset: 1.1 }, footprint, 2.6, 0.3);
+		const pieces = stripOf(compile(curvedSlopeDocument()), 'w');
+		const certified = regionWallVerticalExtrema(steep, pieces, 'w', REGION_WALL_RELATION_EPSILON);
+		if (certified.kind !== 'certified') throw new Error(JSON.stringify(certified));
+		const reference = denseReference(steep, pieces);
+		expect(reference.min).toBeGreaterThanOrEqual(certified.contact.clearance - REGION_WALL_EXTREMA_TOLERANCE_METERS);
+		expect(reference.max).toBeLessThanOrEqual(certified.gap.clearance + REGION_WALL_EXTREMA_TOLERANCE_METERS);
+		expect(reference.min - certified.contact.clearance).toBeLessThan(5e-2);
+		expect(certified.gap.clearance - reference.max).toBeLessThan(5e-2);
+	});
+
+	describe('an ill-conditioned cell', () => {
+		// The back corner `bb` lies 1e-12 m off the line `fb`-`ba`: the cell is
+		// unfolded, but its corner Jacobian is 1e-12, so the station of a point
+		// beside `bb` is pinned only to a large fraction of the cell.
+		const cell = (topA: number, topB: number): WallStripPiece => ({
+			kind: 'cell',
+			fa: [0, 0],
+			fb: [1, 0],
+			ba: [0, 1],
+			bb: [0.5, 0.5 + 1e-12],
+			topA,
+			topB,
+			stationA: 0,
+			stationB: 1
+		});
+		// A footprint vertex on `fb`-`ba`, 7e-13 m from `bb`: its possible readings
+		// reach past every other gap candidate under this steep shed.
+		const near: LayoutVec2 = [0.5, 0.5];
+		const roof = facts({ kind: 'shed', rise: 10, azimuth: Math.PI / 4 }, [near, [0.6, 0.2], [0.2, 0.6]], 3, 0.3);
+
+		it('refuses when the uncertain station moves the top that governs the extremum', () => {
+			const extrema = regionWallVerticalExtrema(roof, [cell(2, 3)], 'w', REGION_WALL_RELATION_EPSILON);
+			expect(extrema.kind).toBe('uncertified');
+		});
+
+		it('certifies the same cell under a level top, where the station does not matter', () => {
+			const extrema = regionWallVerticalExtrema(roof, [cell(2.5, 2.5)], 'w', REGION_WALL_RELATION_EPSILON);
+			if (extrema.kind !== 'certified') throw new Error(JSON.stringify(extrema));
+			expect(extrema.gap.clearance).toBeCloseTo(regionUndersideAt(roof, near) - 2.5, 9);
+		});
+
+		it('refuses a cell whose corner Jacobian is within rounding of zero', () => {
+			const degenerate: WallStripPiece = { ...cell(2.5, 2.5), bb: [0.5, 0.5] } as WallStripPiece;
+			expect(regionWallVerticalExtrema(roof, [degenerate], 'w', REGION_WALL_RELATION_EPSILON).kind).toBe('uncertified');
+		});
 	});
 });

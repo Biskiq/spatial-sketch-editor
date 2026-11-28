@@ -5,7 +5,7 @@ import type {
 	CompiledWallSection,
 } from '@portfolio/layout-core/geometry';
 import { LAYOUT_GEOMETRY_EPSILON } from '@portfolio/layout-core/geometry';
-import { compiledWallTopAt } from '@portfolio/layout-core/wall';
+import { compiledWallTopAt, wallEndReachPoint } from '@portfolio/layout-core/wall';
 import type { LayoutVec2 } from '@portfolio/layout-core/geometry';
 import type {
 	ClipSample,
@@ -25,6 +25,7 @@ import {
 	sampleAt,
 	sectionBottomAt,
 	sectionTopAt,
+	sidePoint,
 	segmentBands,
 	wallOpensAtEnd,
 	wallOpensAtStart,
@@ -34,6 +35,36 @@ import {
 import { quadNormal } from './wall-mesh-geometry';
 import { pushTopFace } from './wall-mesh-top';
 import { pushBandFace, quad, vertex } from './wall-mesh-emit';
+
+function samePlan(a: LayoutVec2, b: LayoutVec2): boolean {
+	return Math.hypot(a[0] - b[0], a[1] - b[1]) <= LAYOUT_GEOMETRY_EPSILON;
+}
+
+/**
+ * Collapse the top and bottom quads emitted from `from` onward to triangles where
+ * two corners coincide in plan, keeping winding and re-deriving a tilted normal
+ * from the surviving corners. Side bands are already triangles or skipped.
+ */
+function collapseCapFaces(faces: Face[], from: number): void {
+	for (let index = faces.length - 1; index >= from; index -= 1) {
+		const face = faces[index]!;
+		if (face.verts.length !== 4) continue;
+		const verts = face.verts.filter((vertex, at, all) => {
+			const next = all[(at + 1) % all.length]!;
+			return (
+				Math.hypot(vertex.p[0] - next.p[0], vertex.p[1] - next.p[1], vertex.p[2] - next.p[2]) >
+				LAYOUT_GEOMETRY_EPSILON
+			);
+		});
+		if (verts.length === 4) continue;
+		if (verts.length < 3) {
+			faces.splice(index, 1);
+			continue;
+		}
+		const normal = quadNormal(verts[0]!.p, verts[1]!.p, verts[2]!.p);
+		faces[index] = { ...face, verts: verts.map((vertex) => ({ ...vertex, n: normal })) };
+	}
+}
 
 function sectionInterfaceDistances(
 	section: CompiledWallSection,
@@ -89,6 +120,25 @@ export function buildSectionFaces(
 		...topKnots,
 	]);
 	if (clip.length < 2) return [];
+	// Inside an untrimmed end's corner reach a section ends at the face's
+	// resolved corner (the Layout strip's rule), so the end cell narrows to a
+	// triangle instead of folding past the mitre.
+	const length = wall.samples.at(-1)!.distance;
+	const startOpen = (endClip?.start ?? 0) <= LAYOUT_GEOMETRY_EPSILON;
+	const endOpen = (endClip?.end ?? length) >= length - LAYOUT_GEOMETRY_EPSILON;
+	const facePoint = (sample: ClipSample, offset: number): LayoutVec2 => {
+		if (sample.corner === null) {
+			const side = offset >= 0 ? 'front' : 'back';
+			const reach = wallEndReachPoint(
+				wall.samples,
+				sample.distance,
+				startOpen ? sidePoint(cornerStart, side, 'current') : null,
+				endOpen ? sidePoint(cornerEnd, side, 'previous') : null,
+			);
+			if (reach) return reach;
+		}
+		return cornerPoint(sample, offset, cornerStart, cornerEnd);
+	};
 	const faces: Face[] = [];
 	const isLintel = section.kind === 'lintel';
 	const topY = section.topY;
@@ -113,10 +163,15 @@ export function buildSectionFaces(
 		const bottomA = sectionBottomAt(section, a.distance);
 		const bottomB = sectionBottomAt(section, b.distance);
 
-		const frontA = cornerPoint(a, half, cornerStart, cornerEnd);
-		const frontB = cornerPoint(b, half, cornerStart, cornerEnd);
-		const backA = cornerPoint(a, -half, cornerStart, cornerEnd);
-		const backB = cornerPoint(b, -half, cornerStart, cornerEnd);
+		const frontA = facePoint(a, half);
+		const frontB = facePoint(b, half);
+		const backA = facePoint(a, -half);
+		const backB = facePoint(b, -half);
+		// Two stations inside one end's reach share the corner: that face has no
+		// width there, so its side bands are skipped and the top/bottom are triangles.
+		const frontCollapsed = samePlan(frontA, frontB);
+		const backCollapsed = samePlan(backA, backB);
+		const firstCapFace = faces.length;
 
 		// The true top per vertex; a level Wall reads the section scalar instead.
 		const topA = sectionTopAt(wall, section, a.distance);
@@ -163,7 +218,7 @@ export function buildSectionFaces(
 				hi,
 			);
 			if (frontOmitted && backOmitted) continue;
-			if (!frontOmitted)
+			if (!frontOmitted && !frontCollapsed)
 				pushBandFace(
 					faces,
 					vertex(frontA[0], yHiAWorld, frontA[1], nA[0], 0, nA[1], a.distance, yTopBandA),
@@ -172,7 +227,7 @@ export function buildSectionFaces(
 					vertex(frontB[0], yHiBWorld, frontB[1], nB[0], 0, nB[1], b.distance, yTopBandB),
 					frontSectionPick,
 				);
-			if (!backOmitted)
+			if (!backOmitted && !backCollapsed)
 				pushBandFace(
 					faces,
 					vertex(backB[0], yHiBWorld, backB[1], -nB[0], 0, -nB[1], b.distance, yTopBandB),
@@ -203,57 +258,15 @@ export function buildSectionFaces(
 		// normal comes from the quad's own geometry so sloped arch undersides
 		// tilt with the profile instead of always facing straight down (−Y).
 		if (isLintel || bottomA <= LAYOUT_GEOMETRY_EPSILON) {
-			const p0: V3 = [backA[0], yBottomA, backA[1]];
-			const p1: V3 = [backB[0], yBottomB, backB[1]];
-			const p2: V3 = [frontB[0], yBottomB, frontB[1]];
-			const p3: V3 = [frontA[0], yBottomA, frontA[1]];
-			const undersideNormal = quadNormal(p0, p1, p2);
-			faces.push(
-				quad(
-					vertex(
-						p0[0],
-						p0[1],
-						p0[2],
-						undersideNormal[0],
-						undersideNormal[1],
-						undersideNormal[2],
-						a.distance,
-						0,
-					),
-					vertex(
-						p1[0],
-						p1[1],
-						p1[2],
-						undersideNormal[0],
-						undersideNormal[1],
-						undersideNormal[2],
-						b.distance,
-						0,
-					),
-					vertex(
-						p2[0],
-						p2[1],
-						p2[2],
-						undersideNormal[0],
-						undersideNormal[1],
-						undersideNormal[2],
-						b.distance,
-						wall.thickness,
-					),
-					vertex(
-						p3[0],
-						p3[1],
-						p3[2],
-						undersideNormal[0],
-						undersideNormal[1],
-						undersideNormal[2],
-						a.distance,
-						wall.thickness,
-					),
-					undersidePick,
-				),
-			);
+			const quadAt: V3[] = [
+				[backA[0], yBottomA, backA[1]],
+				[backB[0], yBottomB, backB[1]],
+				[frontB[0], yBottomB, frontB[1]],
+				[frontA[0], yBottomA, frontA[1]],
+			];
+			pushUndersideFace(faces, quadAt, a.distance, b.distance, wall.thickness, undersidePick);
 		}
+		if (frontCollapsed || backCollapsed) collapseCapFaces(faces, firstCapFace);
 	}
 	if (attribution) {
 		for (const face of faces) {
@@ -275,6 +288,28 @@ export function buildSectionFaces(
 		}
 	}
 	return faces;
+}
+
+/** One underside quad (back A, back B, front B, front A), normal from its own geometry. */
+function pushUndersideFace(
+	faces: Face[],
+	[p0, p1, p2, p3]: V3[],
+	distanceA: number,
+	distanceB: number,
+	thickness: number,
+	pick: FacePick,
+): void {
+	const [nx, ny, nz] = quadNormal(p0!, p1!, p2!);
+	const at = (p: V3, u: number, v: number) => vertex(p[0], p[1], p[2], nx, ny, nz, u, v);
+	faces.push(
+		quad(
+			at(p0!, distanceA, 0),
+			at(p1!, distanceB, 0),
+			at(p2!, distanceB, thickness),
+			at(p3!, distanceA, thickness),
+			pick,
+		),
+	);
 }
 
 /**
