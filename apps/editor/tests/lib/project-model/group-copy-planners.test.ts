@@ -27,7 +27,9 @@ import {
 	createScenePlanners,
 	groupTemplateFromCluster,
 	readGroupTemplate,
+	resolveSceneOverheadSupportOnGeometry,
 	sceneSupportGenerationId,
+	shippedModelResourceEntry,
 	type NormalizedPlacementDefinition,
 	type SceneGroupCopyOrigin,
 } from '@portfolio/project-model/scene-planning';
@@ -259,6 +261,7 @@ async function definitions(): Promise<readonly NormalizedPlacementDefinition[]> 
 async function boot(input: {
 	readonly scene?: CameraFreeSceneDocument;
 	readonly layout?: LayoutDocumentWallFirst;
+	readonly dependencyLock?: ProjectEnvelope['dependencyLock'];
 }) {
 	const project = await createUnitProject({
 		id: PROJECT_ID,
@@ -266,6 +269,7 @@ async function boot(input: {
 		acceptedRevision: REVISION,
 		...(input.scene === undefined ? {} : { scene: input.scene }),
 		...(input.layout === undefined ? {} : { layout: input.layout }),
+		...(input.dependencyLock === undefined ? {} : { dependencyLock: input.dependencyLock }),
 	});
 	const admitted = await admitUnitProject(project, REVISION);
 	if (admitted.kind !== 'admitted') throw new Error(JSON.stringify(admitted.issues));
@@ -739,6 +743,16 @@ describe('place-group-copy — origins', () => {
 		if (refused.kind === 'rejected') expect(refused.code).toBe('no-overhead-support');
 	});
 
+	it('passes the overhead query’s own refusal code through', () => {
+		const refused = resolveSceneOverheadSupportOnGeometry({
+			geometry: compileWallFirstLayoutGeometry(supportedLayout()).geometry,
+			generationId: 'generation-d8b',
+			point: [3, 3],
+			aboveElevation: Number.NaN,
+		});
+		expect(refused).toMatchObject({ kind: 'refused', code: 'non-finite-height' });
+	});
+
 	it('keeps a wall origin’s stored height and refuses a member below the floor', async () => {
 		const project = await createUnitProject({
 			id: PROJECT_ID,
@@ -1170,6 +1184,63 @@ describe('place-group-copy — one atomic install', () => {
 		).toHaveLength(1);
 		expect(lockEntries(now(coordinator).source)).toHaveLength(1);
 		expect(second.changes.map((change) => change.kind)).not.toContain('resource-asset-granted');
+	});
+
+	it('refuses the whole copy when an orphan asset lock pins another revision', async () => {
+		const shipped = shippedModelResourceEntry(ASSET_ID);
+		if (shipped === null) throw new Error('the salon chair has no shipped resource');
+		const orphan = { ...shipped.lock, contentRevision: `sha256-${'f'.repeat(64)}` };
+		const { coordinator, admitted } = await boot({
+			layout: supportedLayout(),
+			dependencyLock: { formatVersion: 1, entries: [orphan] },
+		});
+		const chair = await catalogueModelDefinition(ASSET_ID);
+		if (chair === null) throw new Error('the salon chair has no admitted definition');
+		const refused = await coordinator.accept(
+			groupIntent({
+				snapshot: now(coordinator),
+				operationId: 'op-chair-orphan-lock',
+				template: {
+					name: 'Chair and block',
+					members: [
+						{
+							kind: 'model',
+							name: 'Salon chair',
+							assetId: ASSET_ID,
+							fallback: 'chair',
+							position: [0, 0, 0],
+							rotation: [0, 0, 0],
+							scale: 1,
+						},
+						{
+							kind: 'primitive',
+							primitive: 'box',
+							name: 'Block',
+							dimensions: { width: 0.4, height: 0.4, depth: 0.4 },
+							materialId: 'plaster-warm',
+							castShadow: true,
+							receiveShadow: true,
+							position: [1.2, 0.2, 0],
+							rotation: [0, 0, 0],
+							scale: 1,
+						},
+					],
+				},
+				origin: { kind: 'support', worldXZ: [3, 3] },
+				entityIds: ['chair-copy', 'block-copy'],
+				clusterId: 'cluster-chair-orphan',
+				contacts: [chair.contactMinY, -0.2],
+			}),
+		);
+		expect(refused.kind).toBe('rejected');
+		if (refused.kind === 'rejected') {
+			expect(refused.reason).toBe('incompatible-resource');
+			expect(refused.message).toContain(ASSET_ID);
+		}
+		expect(now(coordinator).canonicalJson).toBe(admitted.canonicalJson);
+		expect(now(coordinator).source.units.scene.data.entities).toEqual([]);
+		expect(now(coordinator).source.units.resources.data.resources).toEqual([]);
+		expect(lockEntries(now(coordinator).source)).toEqual([orphan]);
 	});
 
 	it('changes only Scene entities, clusters, resources and the lock', async () => {

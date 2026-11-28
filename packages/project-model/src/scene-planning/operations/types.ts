@@ -52,6 +52,11 @@ export type SceneOperationRefusalCode =
 	| 'invalid-template'
 	| 'ineligible-member'
 	| 'no-overhead-support'
+	| 'non-finite-point'
+	| 'missing-generation-id'
+	| 'non-finite-height'
+	| 'missing-support-facts'
+	| 'contradictory-support-facts'
 	| 'unknown_asset'
 	| 'incompatible-resource';
 

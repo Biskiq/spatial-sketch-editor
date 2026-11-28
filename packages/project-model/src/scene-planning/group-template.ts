@@ -1,20 +1,13 @@
 /**
  * T2 D8b — the one reusable group template.
  *
- * A Scene cluster has no frame and no closure, so it cannot be a reusable
- * resource by itself. This module supplies that shape: a bounded list of
- * ordinary Scene entity records posed in one axis-aligned frame, with the strict
- * read, the canonical bytes and the read-only extraction from an accepted
- * cluster.
- *
- * The Scene 13 entity codec decides what a member is; on top of it the template
- * refuses what could never travel: Artwork (its image is project-private), a
- * vertical plane, a non-upright body and a model without a shipped pin. A member
- * carries no `id` and no project Finish. Extraction stores positions relative to
- * the group's X/Z rigid pivot at the support beneath its lowest point, so a
- * replay at yaw 0 on the same floor reproduces every pose and another floor
- * preserves every height above it. Canonical bytes are the writer's projection:
- * fixed fields and recursively sorted keys, so equal templates hash equally.
+ * A Scene cluster has no frame or closure, so this module supplies the reusable shape: a bounded list of
+ * ordinary Scene entity records posed in one frame, with strict read, canonical bytes and read-only
+ * extraction. The entity codec decides what a member is; the template refuses what cannot travel (Artwork,
+ * a vertical plane, a non-upright body, a model without a shipped pin), and a member carries no `id` or
+ * project Finish. Extraction poses members relative to the X/Z rigid pivot at the support beneath their
+ * lowest point, so a replay on the same floor reproduces every pose and another floor preserves every
+ * height above it. Canonical bytes are the writer's projection: fixed fields and recursively sorted keys.
  *
  * Runtime-safe: no editor, renderer, Svelte or Three import.
  */
@@ -57,6 +50,9 @@ export const GROUP_TEMPLATE_MAX_MEMBERS = 64;
 
 /** The one name rule a template and its cluster share. */
 export const GROUP_TEMPLATE_NAME_MAX_LENGTH = SCENE_NAME_LIMIT;
+
+/** The surfaces a group member's host definition may name. */
+const GROUP_SURFACES = ['floor', 'ceiling', 'wall'] as const;
 
 type DistributiveOmit<T, Key extends PropertyKey> = T extends unknown ? Omit<T, Key> : never;
 
@@ -215,11 +211,9 @@ const memberParserOptions = {
 };
 
 /**
- * Read one template strictly. The root admits exactly `name` and `members`; each
- * member is read by the Scene entity codec under a sentinel id, so a stray `id`,
- * `materialInstanceId` or unknown key refuses instead of being dropped. The model
- * pin is checked here because it is a shipped-registry fact; the admitted
- * contact is checked by the planner and by Save, where definitions are available.
+ * Read one template strictly. The root admits exactly `name` and `members`; each member is read by the
+ * entity codec under a sentinel id, so a stray `id`, `materialInstanceId` or unknown key refuses. The model
+ * pin is checked here because it is a shipped-registry fact; admitted contact is checked by the planner.
  */
 export function readGroupTemplate(input: unknown): GroupTemplateReadResult {
 	const issues: GroupTemplateIssue[] = [];
@@ -352,9 +346,8 @@ function pinnedShippedModel(
 }
 
 /**
- * One model member's admitted contact, or the refusal that keeps it out. A pin
- * alone is not eligibility: the host definition must record a contact, and a
- * captured contact must agree with it, so a payload cannot shift the body.
+ * One model member's admitted contact, or the refusal that keeps it out. A pin alone is not eligibility:
+ * the host definition must record a contact, and a captured contact must agree with it.
  */
 export function admittedModelContact(input: {
 	readonly assetId: string;
@@ -382,21 +375,30 @@ export function admittedModelContact(input: {
 			[input.assetId, 'missing-definition'],
 		);
 	}
-	const provenance = definition.admission.provenance;
-	const operations = definition.admission.operations;
+	const admission = definition.admission;
+	const provenance = admission.provenance;
 	if (
 		provenance.kind !== 'verified-model' ||
 		!provenance.verificationId.trim() ||
-		!Number.isFinite(definition.contactMinY) ||
-		(!operations.includes('place-object') && !operations.includes('place-group-copy')) ||
-		!definition.admission.supportedSurfaces.includes('floor') ||
-		!definition.admission.uprightOnly
+		!Number.isFinite(definition.contactMinY)
 	) {
 		return refusal(
 			'missing-contact-metadata',
 			`"${input.name}" has no recorded contact height, so it cannot be placed in a group.`,
 			[input.assetId, 'missing-contact-metadata'],
 		);
+	}
+	const surfaces = admission.supportedSurfaces;
+	if (
+		(!admission.operations.includes('place-object') &&
+			!admission.operations.includes('place-group-copy')) ||
+		!GROUP_SURFACES.some((surface) => surfaces.includes(surface)) ||
+		!admission.uprightOnly
+	) {
+		return refusal('unsupported-surface', `"${input.name}" is not admitted for a group surface.`, [
+			input.assetId,
+			'unsupported-surface',
+		]);
 	}
 	if (
 		input.captured !== undefined &&
@@ -442,6 +444,14 @@ export function groupTemplateFromCluster(input: {
 		return refusal(
 			'missing-target',
 			`No Scene cluster "${input.clusterId}" exists in the accepted source.`,
+			[input.clusterId],
+		);
+	}
+	const name = cluster.name.trim();
+	if (name.length === 0 || name.length > GROUP_TEMPLATE_NAME_MAX_LENGTH) {
+		return refusal(
+			'invalid-template',
+			`Group "${cluster.name}" has a name outside the template limit.`,
 			[input.clusterId],
 		);
 	}
@@ -527,7 +537,7 @@ export function groupTemplateFromCluster(input: {
 	});
 	return {
 		kind: 'template',
-		template: canonicalGroupTemplate({ name: cluster.name, members: framed }),
+		template: canonicalGroupTemplate({ name, members: framed }),
 		origin,
 		contacts,
 	};
@@ -545,6 +555,14 @@ function memberContact(
 			[entity.id],
 		);
 	}
+	const support = floorTransformSupport(entity);
+	if (!support.supported) {
+		return refusal(
+			'ineligible-member',
+			`"${entity.name}" cannot be saved in a group: ${support.message}`,
+			[entity.id],
+		);
+	}
 	if (entity.kind === 'model') {
 		const admitted = admittedModelContact({
 			assetId: entity.assetId,
@@ -559,14 +577,6 @@ function memberContact(
 			);
 		}
 		return { kind: 'contact', value: admitted.value };
-	}
-	const support = floorTransformSupport(entity);
-	if (!support.supported) {
-		return refusal(
-			'ineligible-member',
-			`"${entity.name}" cannot be saved in a group: ${support.message}`,
-			[entity.id],
-		);
 	}
 	const analytical =
 		entity.kind === 'form' ? sceneFormContactMinY(entity.form) : analyticalContactMinY(entity);

@@ -395,6 +395,21 @@ describe('place-object refusals', () => {
 			placeInput({ definition: nativeDefinition({ admission: { ...nativeDefinition().admission, uprightOnly: false } }) })
 		);
 		expect(refusalCode(tilted)).toBe('unsupported-surface');
+
+		// A definition admitted only for a group copy is not a standalone
+		// placement, even when its surface would otherwise be usable.
+		const groupOnly = nativeDefinition({
+			admission: {
+				operations: ['place-group-copy'],
+				supportedSurfaces: ['floor'],
+				uprightOnly: true,
+				provenance: { kind: 'analytical', detail: 'group fixture' },
+				exclusions: []
+			}
+		});
+		expect(refusalCode(preparePlaceObjectCandidate(placeInput({ definition: groupOnly })))).toBe(
+			'unsupported-surface'
+		);
 	});
 
 	it('refuses an unresolved, ambiguous or refused support instead of choosing one', () => {

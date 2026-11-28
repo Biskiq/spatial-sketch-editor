@@ -28,6 +28,7 @@ import type {
 } from '../src/scene';
 import type { NormalizedPlacementDefinition } from '../src/scene-planning/types';
 import {
+	admittedModelContact,
 	canonicalGroupTemplate,
 	canonicalGroupTemplateBytes,
 	canonicalGroupTemplateJson,
@@ -374,6 +375,37 @@ describe('group template — strict codec', () => {
 		expect(members[0]).toMatchObject({ kind: 'model', assetId: 'paris-salon-chair' });
 		expect(members[1]).toMatchObject({ kind: 'light', light: 'spot', angle: 0.9 });
 	});
+
+	it('admits a ceiling- or wall-only definition for a group copy', () => {
+		const chair = chairDefinition();
+		const ceiling = {
+			...chair,
+			admission: {
+				...chair.admission,
+				operations: ['place-group-copy'] as const,
+				supportedSurfaces: ['ceiling'] as const,
+			},
+		};
+		const definitions = new Map([[ceiling.definitionKey, ceiling]]);
+		expect(
+			admittedModelContact({
+				assetId: 'paris-salon-chair',
+				name: 'Ceiling fixture',
+				definitions,
+			}),
+		).toEqual({ kind: 'contact', value: CHAIR_CONTACT });
+
+		const generic = {
+			...ceiling,
+			admission: { ...ceiling.admission, supportedSurfaces: ['surface'] as const },
+		};
+		const unsupported = admittedModelContact({
+			assetId: 'paris-salon-chair',
+			name: 'Unclassified fixture',
+			definitions: new Map([[generic.definitionKey, generic]]),
+		});
+		expect(unsupported).toMatchObject({ kind: 'rejected', code: 'unsupported-surface' });
+	});
 });
 
 describe('group template — frame extraction', () => {
@@ -475,5 +507,66 @@ describe('group template — frame extraction', () => {
 		});
 		expect(refused.kind).toBe('rejected');
 		if (refused.kind === 'rejected') expect(refused.code).toBe('no-support');
+	});
+
+	it('refuses extraction the template reader would refuse and returns only readable bytes', () => {
+		// A tilted model is one a loaded or legacy source can hold even though G1
+		// would not group it; extraction must apply the reader's upright rule.
+		const tiltedScene = sceneWith(
+			[
+				{
+					kind: 'model',
+					id: 'chair',
+					name: 'Salon chair',
+					assetId: 'paris-salon-chair',
+					fallback: 'chair',
+					position: [0, 0, 0],
+					rotation: [0.4, 0, 0],
+					scale: 1,
+				},
+				box('box-b', [2, 0.5, 0]),
+			],
+			[{ id: 'cluster-tilted-model', name: 'Tilted model', memberIds: ['chair', 'box-b'] }],
+		);
+		const tilted = groupTemplateFromCluster({
+			scene: tiltedScene,
+			layout: LAYOUT,
+			sourceContentId: SOURCE,
+			clusterId: 'cluster-tilted-model',
+			definitions: [chairDefinition()],
+		});
+		expect(tilted.kind).toBe('rejected');
+		if (tilted.kind === 'rejected') {
+			expect(tilted.code).toBe('ineligible-member');
+			expect(tilted.message).toContain('not a truthful upright');
+		}
+
+		// Scene admits a long cluster name; the template reader does not.
+		const longNamed = sceneWith(
+			[box('box-a', [0, 0.5, 0]), box('box-b', [2, 0.5, 0])],
+			[{ id: 'cluster-long', name: 'x'.repeat(121), memberIds: ['box-a', 'box-b'] }],
+		);
+		const long = groupTemplateFromCluster({
+			scene: longNamed,
+			layout: LAYOUT,
+			sourceContentId: SOURCE,
+			clusterId: 'cluster-long',
+		});
+		expect(long.kind).toBe('rejected');
+		if (long.kind === 'rejected') expect(long.code).toBe('invalid-template');
+
+		const source = sceneWith(
+			[box('box-a', [0, 0.5, 0]), box('box-b', [2, 0.5, 0])],
+			[{ id: 'cluster-fine', name: '  Fine  ', memberIds: ['box-a', 'box-b'] }],
+		);
+		const extracted = groupTemplateFromCluster({
+			scene: source,
+			layout: LAYOUT,
+			sourceContentId: SOURCE,
+			clusterId: 'cluster-fine',
+		});
+		expect(extracted.kind).toBe('template');
+		if (extracted.kind !== 'template') return;
+		expect(readGroupTemplate(extracted.template).success).toBe(true);
 	});
 });

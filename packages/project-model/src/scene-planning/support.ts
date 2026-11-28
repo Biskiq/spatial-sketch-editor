@@ -334,7 +334,14 @@ export type SceneOverheadSupportResolution =
 	  }
 	| {
 			readonly kind: 'refused';
-			readonly code: 'no-overhead-support' | 'stale-generation' | 'unsupported-surface';
+			readonly code:
+				| 'no-overhead-support'
+				| 'stale-generation'
+				| 'non-finite-point'
+				| 'missing-generation-id'
+				| 'non-finite-height'
+				| 'missing-support-facts'
+				| 'contradictory-support-facts';
 			readonly message: string;
 			readonly candidates: readonly OverheadSupportCandidate[];
 	  };
@@ -400,7 +407,7 @@ export function resolveSceneOverheadSupportOnGeometry(input: {
 		case 'unsupported':
 			return {
 				kind: 'refused',
-				code: 'unsupported-surface',
+				code: queried.code,
 				message: queried.message,
 				candidates: [],
 			};
