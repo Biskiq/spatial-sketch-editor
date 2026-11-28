@@ -16,6 +16,7 @@ export type StageProjectEpochWiring = Omit<EpochInput, 'ports'> & {
 	readonly lightInspection: EpochPorts['lightInspection'];
 	readonly objectStudio: EpochPorts['objectStudio'];
 	readonly openSpaceCreated: EpochPorts['openSpaceCreated'];
+	readonly selectTool: EpochPorts['selectTool'];
 };
 
 export function wireStageProjectEpoch(input: StageProjectEpochWiring) {
@@ -28,6 +29,7 @@ export function wireStageProjectEpoch(input: StageProjectEpochWiring) {
 			lightInspection: input.lightInspection,
 			objectStudio: input.objectStudio,
 			openSpaceCreated: input.openSpaceCreated,
+			selectTool: input.selectTool,
 		},
 		projectSession: input.projectSession,
 		preview: input.preview,

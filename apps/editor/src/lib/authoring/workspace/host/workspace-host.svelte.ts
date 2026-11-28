@@ -217,6 +217,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		lightInspection: () => lightInspection.ports.card,
 		objectStudio: () => studioFeature.ports.objectStudio,
 		openSpaceCreated: () => commands.openSpaceCreated,
+		selectTool: () => commands.armWorldTool('select'),
 		projectSession: () => projectSession,
 		preview: () => previewController,
 		createFacade: (snapshot) =>

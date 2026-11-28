@@ -44,9 +44,9 @@ export function planSetRegionForm(
 			[regionId],
 		);
 	}
-	const valueIssue = inputValueIssue(input);
+	const valueIssue = regionFormInputIssue(input);
 	if (valueIssue !== null) return reject('invalid_value', valueIssue, [regionId]);
-	const form = resolvedForm(region, input);
+	const form = resolveRegionForm(region, input);
 	if (form === null) {
 		return reject(
 			'region_form_projection_degenerate',
@@ -69,7 +69,8 @@ export function planSetRegionForm(
 	);
 }
 
-function inputValueIssue(input: RegionFormInput): string | null {
+/** The value gate shared by `planSetRegionForm` and a Region birth. */
+export function regionFormInputIssue(input: RegionFormInput): string | null {
 	if (input.kind === 'flat') return null;
 	if (input.rise !== undefined && !(Number.isFinite(input.rise) && input.rise > 0))
 		return 'Region form rise must be finite and greater than zero';
@@ -85,11 +86,16 @@ function inputValueIssue(input: RegionFormInput): string | null {
 }
 
 /**
- * The stored form an input resolves to: explicit values win, then the current
- * values of the same kind, then the defaults. Rise defaults last because it is
- * derived from the run the chosen azimuth and ridge give.
+ * The stored form an input resolves to for one Region. Explicit values win, then
+ * the current values of the same kind, then the defaults. Rise defaults last
+ * because it is derived from the run the chosen azimuth and ridge give. A Region
+ * birth uses this same resolver, so a new Shed or Gable takes exactly the form
+ * the Card's kind switch would give it.
  */
-function resolvedForm(region: LayoutRegion, input: RegionFormInput): LayoutRegionForm | null {
+export function resolveRegionForm(
+	region: LayoutRegion,
+	input: RegionFormInput,
+): LayoutRegionForm | null {
 	if (input.kind === 'flat') return { kind: 'flat' };
 	const points = region.footprint.points;
 	const current = region.form.kind === input.kind ? region.form : null;

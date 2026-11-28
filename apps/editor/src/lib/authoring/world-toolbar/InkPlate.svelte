@@ -182,8 +182,33 @@
 	{:else if reading === 'terrace' || reading === 'roof'}
 		<div class="pg">
 			<span class="gl" title="Elevation from the Height Sheet">
-				{reading === 'roof' ? 'Flat Roof' : 'Terrace'} · {(snapshot.region?.elevation ?? 0).toFixed(2)} m
+				{reading === 'roof'
+					? snapshot.region?.form === 'shed'
+						? 'Shed Roof'
+						: snapshot.region?.form === 'gable'
+							? 'Gable Roof'
+							: 'Flat Roof'
+					: 'Terrace'} · {(snapshot.region?.elevation ?? 0).toFixed(2)} m
 			</span>
+			{#if reading === 'roof'}
+				<span class="gl">Kind</span>
+				<div class="opts" role="group" aria-label="Roof kind">
+					{#each ['flat', 'shed', 'gable'] as const as form}
+						<button
+							type="button"
+							class="opt kind"
+							aria-label={form === 'flat' ? 'Flat' : form === 'shed' ? 'Shed' : 'Gable'}
+							aria-pressed={snapshot.region?.form === form}
+							title={form === 'flat' ? 'Flat' : form === 'shed' ? 'Shed' : 'Gable'}
+							onclick={() => inkSurface()?.controller.setRoofForm(form)}
+						>{form === 'flat' ? 'Flat' : form === 'shed' ? 'Shed' : 'Gable'}</button
+						>
+					{/each}
+				</div>
+			{/if}
+		</div>
+		<div class="pg">
+			<span class="gl">Shape</span>
 			<div class="opts" role="group" aria-label="Shape">
 				{#each ['box', 'line'] as const as mode}
 					<button
@@ -193,7 +218,7 @@
 						aria-pressed={snapshot.region?.mode === mode}
 						title={mode === 'box' ? 'Box' : 'Line'}
 						onclick={() => inkSurface()?.controller.setRegionMode(mode)}
-					><WorldIcon name={mode === 'box' ? 'shape-box' : 'shape-line'} size={19} /></button
+										><WorldIcon name={mode === 'box' ? 'shape-box' : 'shape-line'} size={19} /></button
 					>
 				{/each}
 			</div>
@@ -311,6 +336,12 @@
 		background: transparent;
 		color: var(--shell-ink-2);
 		cursor: pointer;
+	}
+	.opt.kind {
+		width: auto;
+		min-width: 38px;
+		padding: 0 7px;
+		font: 500 10.5px/1 var(--shell-sans);
 	}
 	.opt:hover:not([aria-pressed='true']) {
 		background: var(--shell-hover);

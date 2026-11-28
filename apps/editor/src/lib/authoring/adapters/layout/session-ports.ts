@@ -15,7 +15,7 @@ import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-ho
 
 import type { CandidatePaperGeometry, LayoutCandidatePaper } from './candidate-preview';
 import type { LayoutCandidatePresenter } from './candidate-presenter';
-import type { InkOpeningOptions, InkReading, InkWallMode } from './ink';
+import type { InkOpeningOptions, InkReading, InkRoofForm, InkWallMode } from './ink';
 
 /** Ink's adapter-lifetime defaults; UI state only, the intent carries resolved numbers. */
 export type InkMemory = {
@@ -30,8 +30,10 @@ export type InkMemory = {
 	reading: InkReading;
 	/** Line, Arc, Box or Circle for the Wall reading; adapter memory for the same reason. */
 	wallMode: InkWallMode;
-	/** Box or Line for the Terrace and Flat Roof readings. */
+	/** Box or Line for the Terrace and Roof readings. */
 	regionMode: 'box' | 'line';
+	/** Flat, Shed or Gable for the next Roof reading; remembered with the tool. */
+	roofForm: InkRoofForm;
 	/** The next Opening's kind and exact defaults. */
 	openingOptions: Required<InkOpeningOptions>;
 	/** The palette's fields are currently valid; pointer placement must honour that. */
@@ -67,6 +69,7 @@ export function createInkMemory(): InkMemory {
 		reading: 'wall',
 		wallMode: 'line',
 		regionMode: 'box',
+		roofForm: 'flat',
 		openingOptions: {
 			kind: 'door',
 			profile: 'rectangular',

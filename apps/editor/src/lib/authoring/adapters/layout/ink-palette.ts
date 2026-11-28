@@ -60,8 +60,8 @@ export function paletteReadings(
 		},
 		{
 			id: 'roof',
-			label: 'Roof › Flat',
-			summary: 'Flat Roof › Flat overhead region, drawn as a Box or a Line.',
+			label: 'Roof',
+			summary: 'A Flat, Shed or Gable overhead region, drawn as a Box or a Line.',
 		},
 		...contributed.map((reading) => ({
 			id: reading.id,
@@ -92,6 +92,7 @@ export function snapshotForPalette(state: InkPaletteState): InkPaletteSnapshot {
 			opening: null,
 			region: {
 				role: view.role,
+				form: view.form,
 				mode: view.mode,
 				points: view.points,
 				elevation: view.elevation,

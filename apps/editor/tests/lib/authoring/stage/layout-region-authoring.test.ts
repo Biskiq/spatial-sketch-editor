@@ -33,9 +33,18 @@ import { restingObjectsOnFloorRegion } from '$lib/authoring/adapters/layout/regi
 import {
 	LAYOUT_REGION_FIT_ROOF_KIND,
 	LAYOUT_REGION_FIT_WALLS_KIND,
+	LAYOUT_REGION_FORM_KIND,
 	LAYOUT_REGION_THICKNESS_KIND,
 	regionEditIntent
 } from '$lib/authoring/adapters/layout/region-planners';
+import {
+	regionSectionFrame,
+	regionSectionKey,
+	regionSectionOf
+} from '$lib/authoring/adapters/layout/region-section';
+import { regionFitRefusalWords } from '$lib/authoring/adapters/layout/refusals';
+import { regionShape } from '$lib/authoring/layout/region-shape-store';
+import { wallFace } from '$lib/authoring/layout/wall-face-store';
 import { interiorLift, liftedSourcesNow } from '$lib/authoring/layout/interior-lift-store.svelte';
 import { createUnitProject } from '../__fixtures__/unit-envelope-fixtures';
 import { captureFor } from '../../../../../../packages/layout-core/tests/__fixtures__/layout-id-capture';
@@ -342,6 +351,8 @@ let counting: StageCounting | null = null;
 
 afterEach(() => {
 	interiorLift.clear();
+	regionShape.close();
+	wallFace.clear();
 	counting?.stop();
 	counting = null;
 });
@@ -1018,5 +1029,356 @@ describe('T1 V3b — sloped fits through the production Layout adapter', () => {
 		expect(refused).toMatchObject({ kind: 'refused', reason: 'region_fit_wall_overrun' });
 		expect(mounted.host.history().depth).toBe(depth);
 		expect(JSON.stringify(acceptedLayout(mounted))).toBe(before);
+	});
+});
+
+/** T1 V3c — creator-facing Shed/Gable birth, Card fields, Edit shape and Section. */
+function gableRoofFixture() {
+	const fixture = fixtureDocument();
+	const created = planCreateRegion({
+		baseline: fixture.document,
+		capture: captureFor('v3c-gable-authoring'),
+		intent: {
+			role: 'overhead',
+			footprint: [[-1, -1], [7, -1], [7, 5], [-1, 5]],
+			elevation: 3.2,
+			thickness: 0.3,
+			name: 'Gable',
+			form: { kind: 'gable', rise: 1.6, azimuth: 0 }
+		}
+	});
+	if (created.kind !== 'success') throw new Error(`the gable fixture was refused: ${created.rejection.message}`);
+	return { fixture: { ...fixture, document: created.document }, gableId: created.regionId };
+}
+
+describe('T1 V3c — roof form authoring through the production Layout adapter', () => {
+	it('births a Shed through the Roof tool in one history entry', async () => {
+		const mounted = await mount();
+		const controller = armInk(mounted);
+		controller.setReading('roof');
+		controller.setRoofForm('shed');
+		const surface = inkSurface()!;
+		mounted.facade.session.heightSheet().set(0, 'key');
+		settle(mounted);
+		const depth = mounted.host.history().depth;
+
+		expect(press(mounted, [8, 6]).claimed).toBe(true);
+		mounted.facade.pointerIntent({
+			phase: 'move',
+			css: stageCss(mounted, [10, 8]),
+			evaluationId: mounted.facade.evaluationId()!
+		});
+		mounted.facade.pointerIntent({
+			phase: 'up',
+			css: stageCss(mounted, [10, 8]),
+			evaluationId: mounted.facade.evaluationId()!
+		});
+		await eventually(
+			() => acceptedLayout(mounted).regions.length === 3 || surface.snapshot().refusal !== null
+		);
+		expect(surface.snapshot().refusal).toBeNull();
+		const created = acceptedLayout(mounted).regions.at(-1)!;
+		expect(created.role).toBe('overhead');
+		expect(created.form.kind).toBe('shed');
+		expect(mounted.host.history().depth).toBe(depth + 1);
+	});
+
+	it('switches form through the canonical planner and publishes the exact Card facts', async () => {
+		const { fixture, shedId } = slopedRoofFixture(0.3);
+		const mounted = await mount(fixture);
+		selectRegion(mounted, shedId);
+		const depth = mounted.host.history().depth;
+		const subject = { sourceId: shedId, sourceKind: 'region' } as never;
+		expect(stageCardFacts(mounted.facade, subject).find((fact) => fact.label === 'Kind')?.value).toBe(
+			'Shed Roof'
+		);
+		expect(stageCardWriter(mounted.facade, subject)?.fieldIds).toEqual([
+			'elevation',
+			'thickness',
+			'rise',
+			'azimuth',
+			'width',
+			'depth'
+		]);
+
+		const snapshot = mounted.facade.snapshot();
+		const outcome = await mounted.host.accept(
+			regionEditIntent({
+				kind: LAYOUT_REGION_FORM_KIND,
+				regionId: shedId,
+				payload: { form: { kind: 'gable' } },
+				operationId: globalThis.crypto.randomUUID(),
+				projectId: snapshot.acceptedRevision.projectId,
+				revisionId: snapshot.acceptedRevision.revisionId,
+				contentRevision: snapshot.domain.unitRevisions.layout,
+				levelId: snapshot.domain.layoutLevelId
+			})
+		);
+		expect(outcome.kind).toBe('installed');
+		expect(regionOf(mounted, shedId)?.form).toMatchObject({ kind: 'gable', ridgeOffset: 0 });
+		expect(mounted.host.history().depth).toBe(depth + 1);
+		settle(mounted);
+		expect(stageCardWriter(mounted.facade, subject)?.fieldIds).toEqual([
+			'elevation',
+			'thickness',
+			'rise',
+			'azimuth',
+			'ridgeOffset',
+			'width',
+			'depth'
+		]);
+	});
+
+	it('opens Edit shape with only the roof-local section joints', async () => {
+		const { fixture, shedId } = slopedRoofFixture(0.3);
+		const mounted = await mount(fixture);
+		selectRegion(mounted, shedId);
+		regionShape.open(shedId);
+		mounted.services.stage.notifySurfaceChange();
+		settle(mounted);
+		const section = regionSectionOf(regionOf(mounted, shedId)!, ELEVATION)!;
+		expect(section).not.toBeNull();
+		const marks = mounted.facade.marks();
+		expect(marks.find((mark) => mark.id === 'layout-region-section:low')).toBeDefined();
+		expect(marks.find((mark) => mark.id === 'layout-region-section:high')).toBeDefined();
+		expect(marks.find((mark) => mark.id === 'layout-region-section:add')).toBeDefined();
+		// Edit shape suppresses the ordinary corner/body/turn writers while open.
+		expect(marks.some((mark) => mark.id.startsWith('layout-region-corner:'))).toBe(false);
+		expect(marks.some((mark) => mark.id === 'layout-region-move-mark')).toBe(false);
+		expect(marks.some((mark) => mark.id === 'layout-region-turn-mark')).toBe(false);
+	});
+
+	it('drags a ridge vertically and horizontally in one previewed form entry', async () => {
+		const { fixture, shedId } = slopedRoofFixture(0.3);
+		const mounted = await mount(fixture);
+		selectRegion(mounted, shedId);
+		const depth = mounted.host.history().depth;
+		const before = regionOf(mounted, shedId)!;
+		expect(before.form.kind).toBe('shed');
+		if (before.form.kind !== 'shed') return;
+
+		const snapshot = mounted.facade.snapshot();
+		await mounted.host.accept(
+			regionEditIntent({
+				kind: LAYOUT_REGION_FORM_KIND,
+				regionId: shedId,
+				payload: { form: { kind: 'gable', rise: 1.6, azimuth: 0, ridgeOffset: 0 } },
+				operationId: globalThis.crypto.randomUUID(),
+				projectId: snapshot.acceptedRevision.projectId,
+				revisionId: snapshot.acceptedRevision.revisionId,
+				contentRevision: snapshot.domain.unitRevisions.layout,
+				levelId: snapshot.domain.layoutLevelId
+			})
+		);
+		await eventually(() => regionOf(mounted, shedId)?.form.kind === 'gable');
+		selectRegion(mounted, shedId);
+		const gable = regionOf(mounted, shedId)!;
+		if (gable.form.kind !== 'gable') return;
+		const entryDepth = mounted.host.history().depth;
+		const section = regionSectionOf(gable, ELEVATION)!;
+		mounted.facade.camera.applyIntent(
+			{
+				kind: 'set-view',
+				eye: [12, 8, 12],
+				target: [3, 3.5, 2],
+				fovYDegrees: 50
+			},
+			2
+		);
+		settle(mounted, 2);
+		regionShape.open(shedId);
+		mounted.services.stage.notifySurfaceChange();
+		settle(mounted, 2);
+		const ridge = section.ridge!;
+		expect(
+			press(mounted, ridge.point, 'layout-region-section:ridge', ridge.height).claimed
+		).toBe(true);
+		moveTo(mounted, ridge.point, ridge.point, ridge.height + 0.4);
+		const preview = mounted.facade
+			.candidatePreviews()
+			.find((candidate) => candidate.id === 'layout-region-section-candidate');
+		expect(preview).toBeDefined();
+		expect(mounted.host.history().depth).toBe(entryDepth);
+		releaseAt(mounted, ridge.point, ridge.height + 0.4);
+		await eventually(() => {
+			const current = regionOf(mounted, shedId);
+			return current?.form.kind === 'gable' && current.form.rise > 1.6;
+		});
+		settle(mounted, 2);
+		const raised = regionOf(mounted, shedId)!;
+		expect(raised.form.kind).toBe('gable');
+		if (raised.form.kind !== 'gable') return;
+		expect(raised.form.rise).toBeGreaterThan(1.6);
+		expect(mounted.host.history().depth).toBe(entryDepth + 1);
+
+		// A second gesture moves the ridge uphill: the plan ray is measured on the
+		// ridge's own plane, so a pure horizontal drag changes only ridgeOffset.
+		const raisedSection = regionSectionOf(raised, ELEVATION)!;
+		const raisedRidge = raisedSection.ridge!;
+		const shifted: readonly [number, number] = [
+			raisedRidge.point[0] + 0.8,
+			raisedRidge.point[1]
+		];
+		regionShape.open(shedId);
+		mounted.services.stage.notifySurfaceChange();
+		settle(mounted, 2);
+		expect(
+			press(mounted, raisedRidge.point, 'layout-region-section:ridge', raisedRidge.height)
+				.claimed
+		).toBe(true);
+		moveTo(mounted, shifted, raisedRidge.point, raisedRidge.height);
+		expect(mounted.host.history().depth).toBe(entryDepth + 1);
+		releaseAt(mounted, shifted, raisedRidge.height);
+		await eventually(() => {
+			const current = regionOf(mounted, shedId);
+			return current?.form.kind === 'gable' && current.form.ridgeOffset > 0.2;
+		});
+		settle(mounted, 2);
+		const after = regionOf(mounted, shedId)!;
+		expect(after.form.kind).toBe('gable');
+		if (after.form.kind !== 'gable') return;
+		expect(after.form.ridgeOffset).toBeGreaterThan(0.2);
+		expect(mounted.host.history().depth).toBe(entryDepth + 2);
+	});
+
+	it('raises both gable eaves from one eave joint drag', async () => {
+		const { fixture, gableId } = gableRoofFixture();
+		const mounted = await mount(fixture);
+		selectRegion(mounted, gableId);
+		const before = regionOf(mounted, gableId)!;
+		if (before.form.kind !== 'gable') return;
+		const section = regionSectionOf(before, ELEVATION)!;
+		const low = section.low;
+		const depth = mounted.host.history().depth;
+		mounted.facade.camera.applyIntent(
+			{
+				kind: 'set-view',
+				eye: [12, 8, 12],
+				target: [3, 3.5, 2],
+				fovYDegrees: 50
+			},
+			2
+		);
+		settle(mounted, 2);
+		regionShape.open(gableId);
+		mounted.services.stage.notifySurfaceChange();
+		settle(mounted, 2);
+
+		expect(press(mounted, low.point, 'layout-region-section:low', low.height).claimed).toBe(
+			true
+		);
+		moveTo(mounted, low.point, low.point, low.height + 0.5);
+		expect(mounted.host.history().depth).toBe(depth);
+		releaseAt(mounted, low.point, low.height + 0.5);
+		await eventually(() => (regionOf(mounted, gableId)?.elevation ?? 0) > before.elevation + 1e-6);
+		const after = regionOf(mounted, gableId)!;
+		expect(after.form).toMatchObject({
+			kind: 'gable',
+			rise: before.form.rise,
+			ridgeOffset: before.form.ridgeOffset
+		});
+		const raised = regionSectionOf(after, ELEVATION)!;
+		expect(raised.low.height).toBeCloseTo(low.height + 0.5, 9);
+		expect(raised.high.height).toBeCloseTo(section.high.height + 0.5, 9);
+		expect(mounted.host.history().depth).toBe(depth + 1);
+	});
+
+	it('inserts a Gable ridge from the shed midpoint ＋ with a click', async () => {
+		const { fixture, shedId } = slopedRoofFixture(0.3);
+		const mounted = await mount(fixture);
+		selectRegion(mounted, shedId);
+		const before = regionOf(mounted, shedId)!;
+		if (before.form.kind !== 'shed') return;
+		const section = regionSectionOf(before, ELEVATION)!;
+		const depth = mounted.host.history().depth;
+		regionShape.open(shedId);
+		mounted.services.stage.notifySurfaceChange();
+		settle(mounted);
+
+		expect(
+			press(mounted, section.midpoint!.point, 'layout-region-section:add', section.midpoint!.height)
+				.claimed
+		).toBe(true);
+		releaseAt(mounted, section.midpoint!.point, section.midpoint!.height);
+		await eventually(() => regionOf(mounted, shedId)?.form.kind === 'gable');
+		const after = regionOf(mounted, shedId)!;
+		expect(after.form).toMatchObject({ kind: 'gable', ridgeOffset: 0 });
+		if (after.form.kind === 'gable' && before.form.kind === 'shed') {
+			expect(after.form.rise).toBeCloseTo(before.form.rise, 9);
+		}
+		expect(mounted.host.history().depth).toBe(depth + 1);
+	});
+
+	it('collapses a Gable ridge dragged onto an eave into a Shed', async () => {
+		const { fixture, gableId } = gableRoofFixture();
+		const mounted = await mount(fixture);
+		selectRegion(mounted, gableId);
+		const gable = regionOf(mounted, gableId)!;
+		if (gable.form.kind !== 'gable') return;
+		const section = regionSectionOf(gable, ELEVATION)!;
+		const ridge = section.ridge!;
+		const run = gable.form.azimuth;
+		const target: readonly [number, number] = [
+			ridge.point[0] + Math.cos(run) * 5,
+			ridge.point[1] + Math.sin(run) * 5
+		];
+		const depth = mounted.host.history().depth;
+		mounted.facade.camera.applyIntent(
+			{
+				kind: 'set-view',
+				eye: [12, 8, 12],
+				target: [3, 3.5, 2],
+				fovYDegrees: 50
+			},
+			2
+		);
+		settle(mounted, 2);
+		regionShape.open(gableId);
+		mounted.services.stage.notifySurfaceChange();
+		settle(mounted, 2);
+		expect(press(mounted, ridge.point, 'layout-region-section:ridge', ridge.height).claimed).toBe(
+			true
+		);
+		moveTo(mounted, target, ridge.point, ridge.height);
+		releaseAt(mounted, target, ridge.height);
+		await eventually(() => regionOf(mounted, gableId)?.form.kind === 'shed');
+		expect(regionOf(mounted, gableId)?.form.kind).toBe('shed');
+		expect(mounted.host.history().depth).toBe(depth + 1);
+	});
+
+	it('builds an A6 Face frame for the Section and Put back restores the camera', () => {
+		const { fixture, shedId } = slopedRoofFixture(0.3);
+		const region = fixture.document.regions.find((entry) => entry.id === shedId)!;
+		const section = regionSectionOf(region, ELEVATION)!;
+		const frame = regionSectionFrame(section)!;
+		expect(frame.bounds.max[1]).toBeGreaterThan(frame.bounds.min[1]);
+		expect(Math.hypot(frame.look[0], frame.look[2])).toBeCloseTo(1, 9);
+		let faced = 0;
+		let restored = 0;
+		wallFace.setCameraPort({
+			standpoint: () => ({}) as never,
+			face: () => {
+				faced += 1;
+				return true;
+			},
+			putBack: () => {
+				restored += 1;
+				return true;
+			}
+		});
+		expect(wallFace.face({ wallId: regionSectionKey(shedId), frame }).kind).toBe('applied');
+		expect(faced).toBe(1);
+		expect(wallFace.putBack(regionSectionKey(shedId)).kind).toBe('restored');
+		expect(restored).toBe(1);
+	});
+
+	it('names the blocking Wall and overrun in the fit refusal', () => {
+		const words = regionFitRefusalWords(
+			"Wall 'wall-1' would rise 0.095 m above region 'region-1' once sealed to its underside. Thicken the roof or change its shape, or edit the Wall top directly.",
+			{ wallLabel: 'Wall 1' }
+		);
+		expect(words).toContain('Wall 1 would rise 0.095 m above this Roof once sealed');
+		expect(words).not.toContain('wall-1');
+		expect(words).not.toContain('region-1');
 	});
 });

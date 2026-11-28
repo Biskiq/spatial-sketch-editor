@@ -154,6 +154,7 @@ export function createInkSession(
 		inkTaskOpen: ports.inkTaskOpen,
 		role: () => (memory.reading === 'roof' ? 'overhead' : 'floor'),
 		mode: () => memory.regionMode,
+		form: () => (memory.reading === 'roof' ? memory.roofForm : 'flat'),
 		publish: () => publish(),
 		select: ports.select,
 	});
@@ -493,6 +494,18 @@ export function createInkSession(
 					return;
 				}
 				memory.regionMode = mode;
+				inkNotice = null;
+				services.stage.notifySurfaceChange();
+				publish();
+			},
+			setRoofForm: (form) => {
+				if (memory.reading !== 'roof' || form === memory.roofForm) return;
+				if (region.snapshot().points.length > 0) {
+					inkNotice = 'Finish or cancel the Roof before switching between Flat, Shed and Gable.';
+					publish();
+					return;
+				}
+				memory.roofForm = form;
 				inkNotice = null;
 				services.stage.notifySurfaceChange();
 				publish();
