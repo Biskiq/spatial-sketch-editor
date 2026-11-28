@@ -1,0 +1,572 @@
+[
+  {
+    "name": "hanging-industrial-salon-webgpu-close-stripped-on",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 134.4
+    },
+    "centre": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 127.5
+    }
+  },
+  {
+    "name": "hanging-industrial-salon-webgpu-close-source-off",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.0037,
+      "brightFraction": 0.0041,
+      "meanLuma": 135.3
+    },
+    "centre": {
+      "clippedFraction": 0.0067,
+      "brightFraction": 0.0075,
+      "meanLuma": 129.4
+    }
+  },
+  {
+    "name": "hanging-industrial-salon-webgpu-gallery-close-stripped-on",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0,
+      "brightFraction": 0.0018,
+      "meanLuma": 189.1
+    },
+    "centre": {
+      "clippedFraction": 0,
+      "brightFraction": 0.0021,
+      "meanLuma": 169.4
+    }
+  },
+  {
+    "name": "lantern-salon-webgpu-close-stripped-on",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.1,
+      "brightFraction": 0.2107,
+      "meanLuma": 165
+    },
+    "centre": {
+      "clippedFraction": 0.0006,
+      "brightFraction": 0.0871,
+      "meanLuma": 95.8
+    }
+  },
+  {
+    "name": "lantern-salon-webgpu-close-source-off",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 93.8
+    },
+    "centre": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 47.7
+    }
+  },
+  {
+    "name": "lantern-salon-webgpu-gallery-close-stripped-on",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.1379,
+      "brightFraction": 0.5227,
+      "meanLuma": 198.7
+    },
+    "centre": {
+      "clippedFraction": 0.0323,
+      "brightFraction": 0.2331,
+      "meanLuma": 123.9
+    }
+  },
+  {
+    "name": "modern-ceiling-salon-webgpu-close-stripped-on",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.0077,
+      "brightFraction": 0.0781,
+      "meanLuma": 165.3
+    },
+    "centre": {
+      "clippedFraction": 0.0288,
+      "brightFraction": 0.0316,
+      "meanLuma": 118.5
+    }
+  },
+  {
+    "name": "modern-ceiling-salon-webgpu-close-source-off",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 114.9
+    },
+    "centre": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 91.3
+    }
+  },
+  {
+    "name": "modern-ceiling-salon-webgpu-gallery-close-stripped-on",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.0282,
+      "brightFraction": 0.4159,
+      "meanLuma": 215.2
+    },
+    "centre": {
+      "clippedFraction": 0.0375,
+      "brightFraction": 0.1402,
+      "meanLuma": 186.1
+    }
+  },
+  {
+    "name": "wall-sconce-salon-webgpu-close-stripped-on",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.398,
+      "brightFraction": 0.703,
+      "meanLuma": 234.7
+    },
+    "centre": {
+      "clippedFraction": 0.7315,
+      "brightFraction": 0.8984,
+      "meanLuma": 238.3
+    }
+  },
+  {
+    "name": "wall-sconce-salon-webgpu-close-source-off",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0,
+      "brightFraction": 0.0087,
+      "meanLuma": 176.5
+    },
+    "centre": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 166.9
+    }
+  },
+  {
+    "name": "wall-sconce-salon-webgpu-gallery-close-stripped-on",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.5302,
+      "brightFraction": 0.8347,
+      "meanLuma": 239.9
+    },
+    "centre": {
+      "clippedFraction": 0.7696,
+      "brightFraction": 0.9346,
+      "meanLuma": 239.3
+    }
+  },
+  {
+    "name": "hanging-industrial-salon-webgpu-close-stripped-on-bulb-point",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.0033,
+      "brightFraction": 0.0157,
+      "meanLuma": 147.1
+    },
+    "centre": {
+      "clippedFraction": 0.013,
+      "brightFraction": 0.0618,
+      "meanLuma": 140.3
+    }
+  },
+  {
+    "name": "hanging-industrial-salon-webgpu-close-stripped-on-bulb-spot",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0,
+      "brightFraction": 0.0001,
+      "meanLuma": 124.9
+    },
+    "centre": {
+      "clippedFraction": 0,
+      "brightFraction": 0.0005,
+      "meanLuma": 100
+    }
+  },
+  {
+    "name": "hanging-industrial-salon-webgpu-close-source-on",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.0037,
+      "brightFraction": 0.0041,
+      "meanLuma": 135.3
+    },
+    "centre": {
+      "clippedFraction": 0.0067,
+      "brightFraction": 0.0075,
+      "meanLuma": 129.4
+    }
+  },
+  {
+    "name": "lantern-salon-webgpu-close-source-on",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.1,
+      "brightFraction": 0.2108,
+      "meanLuma": 165.1
+    },
+    "centre": {
+      "clippedFraction": 0.0005,
+      "brightFraction": 0.0871,
+      "meanLuma": 95.9
+    }
+  },
+  {
+    "name": "lantern-salon-webgpu-close-stripped-on-mouth-spot",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 115.4
+    },
+    "centre": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 101.1
+    }
+  },
+  {
+    "name": "modern-ceiling-salon-webgpu-close-source-on",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.0077,
+      "brightFraction": 0.0776,
+      "meanLuma": 165.3
+    },
+    "centre": {
+      "clippedFraction": 0.0288,
+      "brightFraction": 0.0316,
+      "meanLuma": 118.5
+    }
+  },
+  {
+    "name": "wall-sconce-salon-webgpu-close-stripped-on-mouth-spot",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.0029,
+      "brightFraction": 0.0283,
+      "meanLuma": 178.2
+    },
+    "centre": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 169.8
+    }
+  },
+  {
+    "name": "hanging-industrial-salon-webgl2-close-stripped-on",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 134.4
+    },
+    "centre": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 127.5
+    }
+  },
+  {
+    "name": "hanging-industrial-salon-webgl2-close-source-off",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.0037,
+      "brightFraction": 0.0041,
+      "meanLuma": 135.3
+    },
+    "centre": {
+      "clippedFraction": 0.0066,
+      "brightFraction": 0.0074,
+      "meanLuma": 129.4
+    }
+  },
+  {
+    "name": "lantern-salon-webgl2-close-stripped-on",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.1002,
+      "brightFraction": 0.2108,
+      "meanLuma": 165
+    },
+    "centre": {
+      "clippedFraction": 0.0005,
+      "brightFraction": 0.087,
+      "meanLuma": 95.8
+    }
+  },
+  {
+    "name": "lantern-salon-webgl2-close-source-off",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 93.8
+    },
+    "centre": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 47.7
+    }
+  },
+  {
+    "name": "modern-ceiling-salon-webgl2-close-stripped-on",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.0077,
+      "brightFraction": 0.078,
+      "meanLuma": 165.3
+    },
+    "centre": {
+      "clippedFraction": 0.0288,
+      "brightFraction": 0.0316,
+      "meanLuma": 118.5
+    }
+  },
+  {
+    "name": "modern-ceiling-salon-webgl2-close-source-off",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 114.9
+    },
+    "centre": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 91.3
+    }
+  },
+  {
+    "name": "wall-sconce-salon-webgl2-close-stripped-on",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.398,
+      "brightFraction": 0.703,
+      "meanLuma": 234.7
+    },
+    "centre": {
+      "clippedFraction": 0.7316,
+      "brightFraction": 0.8984,
+      "meanLuma": 238.3
+    }
+  },
+  {
+    "name": "wall-sconce-salon-webgl2-close-source-off",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0,
+      "brightFraction": 0.0087,
+      "meanLuma": 176.6
+    },
+    "centre": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 166.9
+    }
+  },
+  {
+    "name": "hanging-industrial-salon-webgl2-close-stripped-on-bulb-point",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.0032,
+      "brightFraction": 0.0157,
+      "meanLuma": 147.1
+    },
+    "centre": {
+      "clippedFraction": 0.013,
+      "brightFraction": 0.0617,
+      "meanLuma": 140.3
+    }
+  },
+  {
+    "name": "hanging-industrial-salon-webgl2-close-stripped-on-bulb-spot",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0,
+      "brightFraction": 0.0001,
+      "meanLuma": 124.9
+    },
+    "centre": {
+      "clippedFraction": 0,
+      "brightFraction": 0.0005,
+      "meanLuma": 100
+    }
+  },
+  {
+    "name": "hanging-industrial-salon-webgl2-close-source-on",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.0037,
+      "brightFraction": 0.0041,
+      "meanLuma": 135.3
+    },
+    "centre": {
+      "clippedFraction": 0.0066,
+      "brightFraction": 0.0074,
+      "meanLuma": 129.4
+    }
+  },
+  {
+    "name": "lantern-salon-webgl2-close-source-on",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.1001,
+      "brightFraction": 0.2109,
+      "meanLuma": 165.1
+    },
+    "centre": {
+      "clippedFraction": 0.0005,
+      "brightFraction": 0.0871,
+      "meanLuma": 95.9
+    }
+  },
+  {
+    "name": "lantern-salon-webgl2-close-stripped-on-mouth-spot",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 115.4
+    },
+    "centre": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 101.1
+    }
+  },
+  {
+    "name": "modern-ceiling-salon-webgl2-close-source-on",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.0077,
+      "brightFraction": 0.0776,
+      "meanLuma": 165.3
+    },
+    "centre": {
+      "clippedFraction": 0.0288,
+      "brightFraction": 0.0316,
+      "meanLuma": 118.5
+    }
+  },
+  {
+    "name": "wall-sconce-salon-webgl2-close-stripped-on-mouth-spot",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.0029,
+      "brightFraction": 0.0284,
+      "meanLuma": 178.2
+    },
+    "centre": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 169.8
+    }
+  },
+  {
+    "name": "hanging-industrial-gallery-webgpu-close-stripped-on-bulb-point",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.0044,
+      "brightFraction": 0.1847,
+      "meanLuma": 199.9
+    },
+    "centre": {
+      "clippedFraction": 0.0175,
+      "brightFraction": 0.0908,
+      "meanLuma": 187.1
+    }
+  },
+  {
+    "name": "hanging-industrial-gallery-webgl2-close-stripped-on-bulb-point",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0.0045,
+      "brightFraction": 0.1848,
+      "meanLuma": 199.9
+    },
+    "centre": {
+      "clippedFraction": 0.0178,
+      "brightFraction": 0.0907,
+      "meanLuma": 187.1
+    }
+  },
+  {
+    "name": "hanging-industrial-salon-webgpu-close-stripped-off-bulb-point",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 124.9
+    },
+    "centre": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 99.8
+    }
+  },
+  {
+    "name": "hanging-industrial-salon-webgl2-close-stripped-off-bulb-point",
+    "width": 1280,
+    "height": 720,
+    "full": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 124.9
+    },
+    "centre": {
+      "clippedFraction": 0,
+      "brightFraction": 0,
+      "meanLuma": 99.8
+    }
+  }
+]

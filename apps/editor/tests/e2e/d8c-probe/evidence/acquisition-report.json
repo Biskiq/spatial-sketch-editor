@@ -1,0 +1,515 @@
+[
+  {
+    "slug": "hanging_industrial_lamp",
+    "name": "Hanging Industrial Lamp",
+    "creator": "Kuutti Siitonen",
+    "sourcePage": "https://polyhaven.com/a/hanging_industrial_lamp",
+    "resolution": "1k",
+    "reportedDimensionsMm": [
+      549.6065020561218,
+      549.606442451477,
+      1355.3501134738326
+    ],
+    "reportedPolycount": 9530,
+    "filesHash": "93bdeee802d5c557ec986ed728bf843b41ead1fb",
+    "licence": "CC0-1.0 (Poly Haven licence page)",
+    "totalBytes": 3243654,
+    "files": [
+      {
+        "role": "scene",
+        "path": "hanging_industrial_lamp_1k.gltf",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/hanging_industrial_lamp/hanging_industrial_lamp_1k.gltf",
+        "size": 5436,
+        "md5Published": "59baa7ef17a7696ac26bc5bd70fbb3df",
+        "md5Actual": "59baa7ef17a7696ac26bc5bd70fbb3df",
+        "sha256": "97e31aac7c350bc40294e78f39f66d5aa998ac2703be1d09b5dab9ae7027876f",
+        "headers": {
+          "etag": null,
+          "lastModified": "Tue, 24 Nov 2026 12:56:25 GMT",
+          "contentLength": "5436",
+          "contentType": "model/gltf+json"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/hanging_industrial_lamp_emissive_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/hanging_industrial_lamp/hanging_industrial_lamp_emissive_1k.jpg",
+        "size": 40173,
+        "md5Published": "a9e170515931ba022ec6436e188d360b",
+        "md5Actual": "a9e170515931ba022ec6436e188d360b",
+        "sha256": "ebf7fed3b0c1d6104d91b77195c7eb0e3da6927562ec4a612700b8afd7574099",
+        "headers": {
+          "etag": null,
+          "lastModified": "Mon, 16 Nov 2026 11:23:07 GMT",
+          "contentLength": "40173",
+          "contentType": "image/jpeg"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/hanging_industrial_lamp_nor_gl_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/hanging_industrial_lamp/hanging_industrial_lamp_nor_gl_1k.jpg",
+        "size": 753861,
+        "md5Published": "6820f01127e747636024838f0bde0494",
+        "md5Actual": "6820f01127e747636024838f0bde0494",
+        "sha256": "ef524876a1a4c5b6d7fb4c652d21e55474ee85b50b8896537fd60e82b288b5f0",
+        "headers": {
+          "etag": null,
+          "lastModified": "Mon, 16 Nov 2026 11:23:08 GMT",
+          "contentLength": "753861",
+          "contentType": "image/jpeg"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/hanging_industrial_lamp_diff_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/hanging_industrial_lamp/hanging_industrial_lamp_diff_1k.jpg",
+        "size": 708934,
+        "md5Published": "9931801f2ff2533c891105c7a41af39d",
+        "md5Actual": "9931801f2ff2533c891105c7a41af39d",
+        "sha256": "22cafeccd4421495c860f8c522bb9e45eaa19fda6ec3a2365dcb5b1db66aad96",
+        "headers": {
+          "etag": null,
+          "lastModified": "Tue, 24 Nov 2026 12:56:25 GMT",
+          "contentLength": "708934",
+          "contentType": "image/jpeg"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/hanging_industrial_lamp_arm_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/hanging_industrial_lamp/hanging_industrial_lamp_arm_1k.jpg",
+        "size": 835394,
+        "md5Published": "077f309d4ed9d38b19be1aa75462771e",
+        "md5Actual": "077f309d4ed9d38b19be1aa75462771e",
+        "sha256": "888d78437900b43874af5195694c7b867568c9a96ef528846ad7d001f9e096ae",
+        "headers": {
+          "etag": null,
+          "lastModified": "Mon, 16 Nov 2026 11:23:09 GMT",
+          "contentLength": "835394",
+          "contentType": "image/jpeg"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/hanging_industrial_lamp_glass_nor_gl_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/hanging_industrial_lamp/hanging_industrial_lamp_glass_nor_gl_1k.jpg",
+        "size": 555604,
+        "md5Published": "2e64e3e249137658baaa7cde64ad4def",
+        "md5Actual": "2e64e3e249137658baaa7cde64ad4def",
+        "sha256": "5393af7d78e85689cba7c7b198fafddcee540d3125ebd133799d56f19945d8bf",
+        "headers": {
+          "etag": null,
+          "lastModified": "Tue, 24 Nov 2026 12:56:26 GMT",
+          "contentLength": "555604",
+          "contentType": "image/jpeg"
+        }
+      },
+      {
+        "role": "buffer",
+        "path": "hanging_industrial_lamp.bin",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/hanging_industrial_lamp/hanging_industrial_lamp.bin",
+        "size": 344252,
+        "md5Published": "7148574f0db05abe68f7e51565abe2ce",
+        "md5Actual": "7148574f0db05abe68f7e51565abe2ce",
+        "sha256": "12e8293535e816f1e8bebc94e95da092599909d3c1b9b6cc7384d90307db06ca",
+        "headers": {
+          "etag": null,
+          "lastModified": "Tue, 24 Nov 2026 12:56:27 GMT",
+          "contentLength": "344252",
+          "contentType": "application/octet-stream"
+        }
+      }
+    ],
+    "gltfReferences": [
+      "hanging_industrial_lamp.bin",
+      "textures/hanging_industrial_lamp_emissive_1k.jpg",
+      "textures/hanging_industrial_lamp_nor_gl_1k.jpg",
+      "textures/hanging_industrial_lamp_diff_1k.jpg",
+      "textures/hanging_industrial_lamp_arm_1k.jpg",
+      "textures/hanging_industrial_lamp_glass_nor_gl_1k.jpg"
+    ],
+    "bufferUrlAnomaly": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/hanging_industrial_lamp/hanging_industrial_lamp.bin"
+  },
+  {
+    "slug": "modern_ceiling_lamp_01",
+    "name": "Modern Ceiling Lamp 01",
+    "creator": "James Ray Cock",
+    "sourcePage": "https://polyhaven.com/a/modern_ceiling_lamp_01",
+    "resolution": "1k",
+    "reportedDimensionsMm": [
+      431.6493272781372,
+      431.6607564687729,
+      951.5514969825745
+    ],
+    "reportedPolycount": 5602,
+    "filesHash": "d324ea2a3c480145e3cf8beca5ec9c408b257dbb",
+    "licence": "CC0-1.0 (Poly Haven licence page)",
+    "totalBytes": 436065,
+    "files": [
+      {
+        "role": "scene",
+        "path": "modern_ceiling_lamp_01_1k.gltf",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/modern_ceiling_lamp_01/modern_ceiling_lamp_01_1k.gltf",
+        "size": 6177,
+        "md5Published": "b85c212ffcc2cb9c74b9e68f314fec3b",
+        "md5Actual": "b85c212ffcc2cb9c74b9e68f314fec3b",
+        "sha256": "f88b5d0a81fa813457a77474e7e4e812f97ad5fac2109ba03ddb183274be3f8c",
+        "headers": {
+          "etag": null,
+          "lastModified": "Tue, 03 Nov 2026 20:05:13 GMT",
+          "contentLength": "6177",
+          "contentType": "application/octet-stream"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/modern_ceiling_lamp_01_arm_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modern_ceiling_lamp_01/modern_ceiling_lamp_01_arm_1k.jpg",
+        "size": 124022,
+        "md5Published": "6667aa4091a273a041715dccd3b83bc8",
+        "md5Actual": "6667aa4091a273a041715dccd3b83bc8",
+        "sha256": "f4c6a8e7c86b1deaaf0f74099539ff635063b63f594b0fadfc3ec8fac805df4e",
+        "headers": {
+          "etag": null,
+          "lastModified": "Tue, 24 Nov 2026 12:56:24 GMT",
+          "contentLength": "124022",
+          "contentType": "image/jpeg"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/modern_ceiling_lamp_01_diff_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modern_ceiling_lamp_01/modern_ceiling_lamp_01_diff_1k.jpg",
+        "size": 79705,
+        "md5Published": "7197acc141761c4c417023b9fb58db95",
+        "md5Actual": "7197acc141761c4c417023b9fb58db95",
+        "sha256": "c08bfbf7576a86a4a09d386ae9f0a92965fc652bf82f3a8dba1c796b1aa9e535",
+        "headers": {
+          "etag": null,
+          "lastModified": "Tue, 24 Nov 2026 12:56:24 GMT",
+          "contentLength": "79705",
+          "contentType": "image/jpeg"
+        }
+      },
+      {
+        "role": "buffer",
+        "path": "modern_ceiling_lamp_01.bin",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/modern_ceiling_lamp_01/modern_ceiling_lamp_01.bin",
+        "size": 146828,
+        "md5Published": "48b86e7e6db78e6d3dfd85b765c3ab68",
+        "md5Actual": "48b86e7e6db78e6d3dfd85b765c3ab68",
+        "sha256": "ae5140a64e12e639554158901a5e92340bb37c706096ff255804e3220fb96367",
+        "headers": {
+          "etag": null,
+          "lastModified": "Sun, 15 Nov 2026 15:19:43 GMT",
+          "contentLength": "146828",
+          "contentType": "application/octet-stream"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/modern_ceiling_lamp_01_nor_gl_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modern_ceiling_lamp_01/modern_ceiling_lamp_01_nor_gl_1k.jpg",
+        "size": 79333,
+        "md5Published": "f3ebd90aa565968ce1faf25a03b1f912",
+        "md5Actual": "f3ebd90aa565968ce1faf25a03b1f912",
+        "sha256": "dd75bd21a901581325f5c363bd89b45430b8531cb27dead314cd087196a33c27",
+        "headers": {
+          "etag": null,
+          "lastModified": "Sun, 15 Nov 2026 15:19:43 GMT",
+          "contentLength": "79333",
+          "contentType": "image/jpeg"
+        }
+      }
+    ],
+    "gltfReferences": [
+      "modern_ceiling_lamp_01.bin",
+      "textures/modern_ceiling_lamp_01_nor_gl_1k.jpg",
+      "textures/modern_ceiling_lamp_01_diff_1k.jpg",
+      "textures/modern_ceiling_lamp_01_arm_1k.jpg"
+    ],
+    "bufferUrlAnomaly": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/modern_ceiling_lamp_01/modern_ceiling_lamp_01.bin"
+  },
+  {
+    "slug": "lantern_chandelier_01",
+    "name": "Lantern Chandelier 01",
+    "creator": "Kirill Sannikov",
+    "sourcePage": "https://polyhaven.com/a/lantern_chandelier_01",
+    "resolution": "1k",
+    "reportedDimensionsMm": [
+      579.170286655426,
+      574.6368169784546,
+      877.587977796793
+    ],
+    "reportedPolycount": 5971,
+    "filesHash": "9fa2671b82fa607b5060f188595686ad50572bce",
+    "licence": "CC0-1.0 (Poly Haven licence page)",
+    "totalBytes": 1480125,
+    "files": [
+      {
+        "role": "scene",
+        "path": "lantern_chandelier_01_1k.gltf",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/lantern_chandelier_01/lantern_chandelier_01_1k.gltf",
+        "size": 7774,
+        "md5Published": "1692aed50765a13f631d65cb64bf9a4f",
+        "md5Actual": "1692aed50765a13f631d65cb64bf9a4f",
+        "sha256": "dc5480e03b82d12521fc46bdb73d4a0291641cfa0d4e4c0fe21f3a087bc69468",
+        "headers": {
+          "etag": null,
+          "lastModified": "Tue, 24 Nov 2026 13:01:52 GMT",
+          "contentLength": "7774",
+          "contentType": "application/octet-stream"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/lantern_chandelier_01_glass_arm_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/lantern_chandelier_01/lantern_chandelier_01_glass_arm_1k.jpg",
+        "size": 23669,
+        "md5Published": "034728b008419f7e58c3100519d42c77",
+        "md5Actual": "034728b008419f7e58c3100519d42c77",
+        "sha256": "0946fcf83e9839caaa91e978d851cebcdb080f5e58e41cb912a967efdda8eca2",
+        "headers": {
+          "etag": null,
+          "lastModified": "Thu, 19 Nov 2026 01:30:53 GMT",
+          "contentLength": "23669",
+          "contentType": "image/jpeg"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/lantern_chandelier_01_glass_nor_gl_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/lantern_chandelier_01/lantern_chandelier_01_glass_nor_gl_1k.jpg",
+        "size": 504041,
+        "md5Published": "ae5f7fddd9b158f308e092216fcce457",
+        "md5Actual": "ae5f7fddd9b158f308e092216fcce457",
+        "sha256": "b2b71d166f9f42ac916c3d3139652cd2bbb8158ba69003777ecb9ec326ecfdc7",
+        "headers": {
+          "etag": null,
+          "lastModified": "Tue, 24 Nov 2026 13:01:53 GMT",
+          "contentLength": "504041",
+          "contentType": "image/jpeg"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/lantern_chandelier_01_arm_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/lantern_chandelier_01/lantern_chandelier_01_arm_1k.jpg",
+        "size": 307956,
+        "md5Published": "c3f81f516235c19f5529db8eeed82967",
+        "md5Actual": "c3f81f516235c19f5529db8eeed82967",
+        "sha256": "759c5d302fb6b6443677d221b16010395f70018d0f5eb83913c4c9ebad5efb0e",
+        "headers": {
+          "etag": null,
+          "lastModified": "Thu, 12 Nov 2026 19:38:30 GMT",
+          "contentLength": "307956",
+          "contentType": "image/jpeg"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/lantern_chandelier_01_diff_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/lantern_chandelier_01/lantern_chandelier_01_diff_1k.jpg",
+        "size": 166693,
+        "md5Published": "37d15a3440e919c20a6dfb4f8a9e68c9",
+        "md5Actual": "37d15a3440e919c20a6dfb4f8a9e68c9",
+        "sha256": "72b46da4e813c1e3ef27a9ddc4cc849a4c6de313ac2925b189c58a8813233313",
+        "headers": {
+          "etag": null,
+          "lastModified": "Wed, 25 Nov 2026 22:06:54 GMT",
+          "contentLength": "166693",
+          "contentType": "image/jpeg"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/lantern_chandelier_01_glass_diff_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/lantern_chandelier_01/lantern_chandelier_01_glass_diff_1k.jpg",
+        "size": 22100,
+        "md5Published": "3d1c653ffd71bad4cd59ac3c7b323faa",
+        "md5Actual": "3d1c653ffd71bad4cd59ac3c7b323faa",
+        "sha256": "b7f9a93f77db82980c2e5f5e5667e1e073118e881bd500e9e1a45e5de5551103",
+        "headers": {
+          "etag": null,
+          "lastModified": "Thu, 12 Nov 2026 19:38:33 GMT",
+          "contentLength": "22100",
+          "contentType": "image/jpeg"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/lantern_chandelier_01_glass_alpha_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/lantern_chandelier_01/lantern_chandelier_01_glass_alpha_1k.jpg",
+        "size": 19893,
+        "md5Published": "4baa22e6d91bdfc1784828914bb99410",
+        "md5Actual": "4baa22e6d91bdfc1784828914bb99410",
+        "sha256": "facc4b2c8b0530175cb669c3230ad42c001402d6125d7954aa6506a76f7a423f",
+        "headers": {
+          "etag": null,
+          "lastModified": "Thu, 19 Nov 2026 01:30:58 GMT",
+          "contentLength": "19893",
+          "contentType": "image/jpeg"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/lantern_chandelier_01_nor_gl_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/lantern_chandelier_01/lantern_chandelier_01_nor_gl_1k.jpg",
+        "size": 163651,
+        "md5Published": "dc586af8f1abf9950241eac67e5a6ba5",
+        "md5Actual": "dc586af8f1abf9950241eac67e5a6ba5",
+        "sha256": "c09551358d2f95467e3af5ec5b2cd9338f84a23980c1536157e9291e01c3d94d",
+        "headers": {
+          "etag": null,
+          "lastModified": "Thu, 19 Nov 2026 01:30:59 GMT",
+          "contentLength": "163651",
+          "contentType": "image/jpeg"
+        }
+      },
+      {
+        "role": "buffer",
+        "path": "lantern_chandelier_01.bin",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/lantern_chandelier_01/lantern_chandelier_01.bin",
+        "size": 264348,
+        "md5Published": "5a341ffae56b0f2defcad4c3f37bb35d",
+        "md5Actual": "5a341ffae56b0f2defcad4c3f37bb35d",
+        "sha256": "2431ab40b0c336600ba58c3144b6cb257370245a5096938363aa4b796aaa5cee",
+        "headers": {
+          "etag": null,
+          "lastModified": "Tue, 24 Nov 2026 13:02:00 GMT",
+          "contentLength": "264348",
+          "contentType": "application/octet-stream"
+        }
+      }
+    ],
+    "gltfReferences": [
+      "lantern_chandelier_01.bin",
+      "textures/lantern_chandelier_01_nor_gl_1k.jpg",
+      "textures/lantern_chandelier_01_diff_1k.jpg",
+      "textures/lantern_chandelier_01_arm_1k.jpg",
+      "textures/lantern_chandelier_01_glass_alpha_1k.jpg",
+      "textures/lantern_chandelier_01_glass_nor_gl_1k.jpg",
+      "textures/lantern_chandelier_01_glass_diff_1k.jpg",
+      "textures/lantern_chandelier_01_glass_arm_1k.jpg"
+    ],
+    "bufferUrlAnomaly": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/lantern_chandelier_01/lantern_chandelier_01.bin"
+  },
+  {
+    "slug": "industrial_wall_sconce",
+    "name": "Industrial Wall Sconce",
+    "creator": "Ulan Cabanilla",
+    "sourcePage": "https://polyhaven.com/a/industrial_wall_sconce",
+    "resolution": "1k",
+    "reportedDimensionsMm": [
+      150.348000228405,
+      251.5759002417326,
+      341.7818397283554
+    ],
+    "reportedPolycount": 9826,
+    "filesHash": "aa185f8f5968206d2240a1e39b3fce85dc68dff5",
+    "licence": "CC0-1.0 (Poly Haven licence page)",
+    "totalBytes": 1841451,
+    "files": [
+      {
+        "role": "scene",
+        "path": "industrial_wall_sconce_1k.gltf",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/industrial_wall_sconce/industrial_wall_sconce_1k.gltf",
+        "size": 4961,
+        "md5Published": "39c1dd9ad11422e3a55673989c150270",
+        "md5Actual": "39c1dd9ad11422e3a55673989c150270",
+        "sha256": "d36361a9163c9543546f17de223de27db53423ea6aa905b75609142f45af2893",
+        "headers": {
+          "etag": null,
+          "lastModified": "Fri, 13 Nov 2026 20:28:57 GMT",
+          "contentLength": "4961",
+          "contentType": "model/gltf+json"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/industrial_wall_sconce_nor_gl_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/industrial_wall_sconce/industrial_wall_sconce_nor_gl_1k.jpg",
+        "size": 205591,
+        "md5Published": "7f50c6c2ad0b75cc3b55c6cdf3b4d9b1",
+        "md5Actual": "7f50c6c2ad0b75cc3b55c6cdf3b4d9b1",
+        "sha256": "5f5e1f2c6028af264fdfcc55d34599a30bf74d8d4828eec10c4fdafb693d83e9",
+        "headers": {
+          "etag": null,
+          "lastModified": "Thu, 19 Nov 2026 02:45:15 GMT",
+          "contentLength": "205591",
+          "contentType": "image/jpeg"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/industrial_wall_sconce_diff_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/industrial_wall_sconce/industrial_wall_sconce_diff_1k.jpg",
+        "size": 445573,
+        "md5Published": "00a9741f896c002be1fb4307a16c834d",
+        "md5Actual": "00a9741f896c002be1fb4307a16c834d",
+        "sha256": "756fbb7af2d61a092f923804f0f5cf9ef111a38fa5c85a732cc54388c7dcfc77",
+        "headers": {
+          "etag": null,
+          "lastModified": "Thu, 26 Nov 2026 03:41:02 GMT",
+          "contentLength": "445573",
+          "contentType": "image/jpeg"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/industrial_wall_sconce_arm_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/industrial_wall_sconce/industrial_wall_sconce_arm_1k.jpg",
+        "size": 545385,
+        "md5Published": "c877d7c8b3199e6c9cbeaa6c86a18d8f",
+        "md5Actual": "c877d7c8b3199e6c9cbeaa6c86a18d8f",
+        "sha256": "75e1b42f50fda1570955eb40b60089e7857283914584ac71ac8d5155a29d31df",
+        "headers": {
+          "etag": null,
+          "lastModified": "Thu, 26 Nov 2026 03:41:02 GMT",
+          "contentLength": "545385",
+          "contentType": "image/jpeg"
+        }
+      },
+      {
+        "role": "texture",
+        "path": "textures/industrial_wall_sconce_bulb_diff_1k.jpg",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/industrial_wall_sconce/industrial_wall_sconce_bulb_diff_1k.jpg",
+        "size": 364889,
+        "md5Published": "0ffbe4a8ccece6a89f820ed128827e66",
+        "md5Actual": "0ffbe4a8ccece6a89f820ed128827e66",
+        "sha256": "638dfdf1eaa394c7e300c46b9297769669604b98229882130c33b2d7d610ff9c",
+        "headers": {
+          "etag": null,
+          "lastModified": "Thu, 19 Nov 2026 14:16:15 GMT",
+          "contentLength": "364889",
+          "contentType": "image/jpeg"
+        }
+      },
+      {
+        "role": "buffer",
+        "path": "industrial_wall_sconce.bin",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/industrial_wall_sconce/industrial_wall_sconce.bin",
+        "size": 275052,
+        "md5Published": "0a3eac103bc90f9eb2d9151e487c1e79",
+        "md5Actual": "0a3eac103bc90f9eb2d9151e487c1e79",
+        "sha256": "4e015509aa8c1ecfdac50b6cf24336c996dedb2a254f360c20a397cc2b39dc57",
+        "headers": {
+          "etag": null,
+          "lastModified": "Fri, 13 Nov 2026 20:29:01 GMT",
+          "contentLength": "275052",
+          "contentType": "application/octet-stream"
+        }
+      }
+    ],
+    "gltfReferences": [
+      "industrial_wall_sconce.bin",
+      "textures/industrial_wall_sconce_nor_gl_1k.jpg",
+      "textures/industrial_wall_sconce_diff_1k.jpg",
+      "textures/industrial_wall_sconce_arm_1k.jpg",
+      "textures/industrial_wall_sconce_bulb_diff_1k.jpg",
+      "textures/industrial_wall_sconce_arm_1k.jpg"
+    ],
+    "bufferUrlAnomaly": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/industrial_wall_sconce/industrial_wall_sconce.bin"
+  }
+]
