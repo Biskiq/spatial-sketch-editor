@@ -189,6 +189,7 @@ describe('group planners', () => {
 				'scene-group-duplicate',
 				'scene-group-erase',
 				'create-light-rig',
+				'place-group-copy',
 			].sort(),
 		);
 	});

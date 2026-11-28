@@ -31,9 +31,13 @@ import {
 	datumSupportCandidate,
 	floorSupportSnapshotOf,
 	layoutDatumElevation,
+	overheadSupportSnapshotOf,
 	queryFloorSupports,
+	queryOverheadSupports,
 	type FloorSupportCandidate,
 	type FloorSupportQueryResult,
+	type OverheadSupportCandidate,
+	type OverheadSupportQueryResult,
 } from '@portfolio/layout-core/room';
 import {
 	compileWallFirstLayoutGeometry,
@@ -311,6 +315,103 @@ export function resolveSceneSupportAtOrBelowOnGeometry(input: {
 		message: `${atHighest.length} floor contexts support the lifted destination at ${highest} m; the creator must choose one.`,
 		candidates: atHighest,
 	};
+}
+
+/**
+ * The downward support a mount hangs from, or the typed refusal.
+ *
+ * This is T1's own overhead query, consumed unchanged: closed-Space lids and
+ * overhead-region undersides at one X/Z, above the floor the caller already
+ * resolved, ordered by increasing elevation. The lowest candidate is the mount
+ * datum; no hit height, `ceilingElevation` read or mesh face enters it, so Scene
+ * adds no second ceiling authority.
+ */
+export type SceneOverheadSupportResolution =
+	| {
+			readonly kind: 'resolved';
+			readonly support: OverheadSupportCandidate;
+			readonly generationId: string;
+	  }
+	| {
+			readonly kind: 'refused';
+			readonly code:
+				| 'no-overhead-support'
+				| 'stale-generation'
+				| 'non-finite-point'
+				| 'missing-generation-id'
+				| 'non-finite-height'
+				| 'missing-support-facts'
+				| 'contradictory-support-facts';
+			readonly message: string;
+			readonly candidates: readonly OverheadSupportCandidate[];
+	  };
+
+export function resolveSceneOverheadSupport(input: {
+	readonly layout: LayoutDocumentWallFirst;
+	readonly sourceContentId: string;
+	readonly point: LayoutVec2;
+	readonly aboveElevation: number;
+	readonly evidenceGenerationId?: string;
+}): SceneOverheadSupportResolution {
+	const geometry = compileWallFirstLayoutGeometry(input.layout).geometry;
+	return resolveSceneOverheadSupportOnGeometry({
+		...input,
+		geometry,
+		generationId: sceneSupportGenerationId(input.sourceContentId),
+	});
+}
+
+export function resolveSceneOverheadSupportOnGeometry(input: {
+	readonly geometry: CompiledLayoutGeometry;
+	readonly generationId: string;
+	readonly point: LayoutVec2;
+	readonly aboveElevation: number;
+	readonly evidenceGenerationId?: string;
+}): SceneOverheadSupportResolution {
+	const queried: OverheadSupportQueryResult = queryOverheadSupports(
+		overheadSupportSnapshotOf(input.geometry),
+		{
+			generationId: input.generationId,
+			...(input.evidenceGenerationId === undefined
+				? {}
+				: { evidenceGenerationId: input.evidenceGenerationId }),
+			x: input.point[0],
+			z: input.point[1],
+			aboveElevation: input.aboveElevation,
+		},
+	);
+	switch (queried.kind) {
+		case 'candidates':
+			// The query orders by increasing elevation, so the first candidate is the
+			// face a pendant hangs from.
+			return {
+				kind: 'resolved',
+				support: queried.candidates[0]!,
+				generationId: input.generationId,
+			};
+		case 'none':
+			return {
+				kind: 'refused',
+				code: 'no-overhead-support',
+				message: 'Nothing overhead supports this point.',
+				candidates: [],
+			};
+		case 'stale-generation':
+			return {
+				kind: 'refused',
+				code: 'stale-generation',
+				message: queried.message,
+				candidates: [],
+			};
+		case 'invalid-input':
+		case 'unsupported':
+			return {
+				kind: 'refused',
+				code: queried.code,
+				message: queried.message,
+				candidates: [],
+			};
+	}
 }
 
 function queryWithDatum(

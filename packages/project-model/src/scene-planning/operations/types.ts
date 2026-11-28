@@ -26,6 +26,7 @@ export const SCENE_OPERATION_KINDS = [
 	'scene-group-duplicate',
 	'scene-group-erase',
 	'create-light-rig',
+	'place-group-copy',
 ] as const;
 
 export type SceneOperationKind = (typeof SCENE_OPERATION_KINDS)[number];
@@ -48,6 +49,15 @@ export type SceneOperationRefusalCode =
 	| 'record-scope-violation'
 	| 'missing-definition'
 	| 'definition-changed'
+	| 'invalid-template'
+	| 'ineligible-member'
+	| 'no-overhead-support'
+	| 'non-finite-point'
+	| 'missing-generation-id'
+	| 'non-finite-height'
+	| 'missing-support-facts'
+	| 'contradictory-support-facts'
+	| 'unknown_asset'
 	| 'incompatible-resource';
 
 export type SceneOperationRefusal = {

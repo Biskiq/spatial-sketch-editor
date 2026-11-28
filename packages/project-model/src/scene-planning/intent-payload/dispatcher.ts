@@ -20,6 +20,7 @@ import {
 import {
 	readCreateLightRigPayload,
 	readGroupCreatePayload,
+	readPlaceGroupCopyPayload,
 	readGroupDuplicatePayload,
 	readGroupErasePayload,
 	readGroupRenamePayload,
@@ -40,6 +41,8 @@ export function readSceneOperationPayload(
 			return readCreateFormPayload(reader, raw);
 		case 'place-form-copy':
 			return readPlaceFormCopyPayload(reader, raw);
+		case 'place-group-copy':
+			return readPlaceGroupCopyPayload(reader, raw);
 		case 'set-form-size':
 			return readSetFormSizePayload(reader, raw);
 		case 'set-form-profile':

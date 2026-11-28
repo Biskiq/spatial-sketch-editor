@@ -1,6 +1,7 @@
 import { type Vec3 } from '../../scene';
 import { type SceneOperationPayload } from './types';
-import { readFrame, readFrameReference, readPoint } from './readers';
+import { readFrame, readFrameReference, readPoint, readSupportChoice } from './readers';
+import { readGroupTemplate, type GroupTemplate } from '../group-template';
 import { ShapeReader } from '../../strict-shape';
 
 /** Read a non-empty list of captured opaque ids. */
@@ -212,6 +213,152 @@ export function readCreateLightRigPayload(
 		name,
 		lights: lights as NonNullable<(typeof lights)[number]>[],
 	};
+}
+
+/** One `place-group-copy` origin: a resolved floor, an overhead face or a wall pose. */
+type GroupCopyOriginPayload = Extract<
+	SceneOperationPayload,
+	{ kind: 'place-group-copy' }
+>['origin'];
+
+/**
+ * Read one `place-group-copy` payload.
+ *
+ * The template is read by the one template codec, so a member Scene 13 does not
+ * admit, an Artwork, a plane, a non-upright body or an unpinned model refuses
+ * here as well as in the planner's own re-read. `supportChoice` belongs to the
+ * floor beneath a `support` or `overhead` origin; a `wall` origin carries a
+ * frame-local position and no choice.
+ */
+export function readPlaceGroupCopyPayload(
+	reader: ShapeReader,
+	raw: unknown,
+): SceneOperationPayload | null {
+	const path = '$.payload';
+	const record = reader.object(raw, path, [
+		'kind',
+		'template',
+		'name',
+		'origin',
+		'yaw',
+		'frame',
+		'frameReference',
+		'entityIds',
+		'clusterId',
+		'contacts',
+	]);
+	if (record === null) return null;
+	const template = readGroupTemplateWithReader(reader, record.template, `${path}.template`);
+	const name = reader.string(record.name, `${path}.name`);
+	const origin = readGroupCopyOrigin(reader, record.origin, `${path}.origin`);
+	const yaw = reader.number(record.yaw, `${path}.yaw`);
+	const frame = readFrame(reader, record.frame, `${path}.frame`);
+	const frameReference = readFrameReference(
+		reader,
+		record.frameReference,
+		`${path}.frameReference`,
+		frame,
+	);
+	const entityIds = readIds(reader, record.entityIds, `${path}.entityIds`);
+	const clusterId = reader.opaqueId(record.clusterId, `${path}.clusterId`);
+	const contacts = readGroupCopyContacts(reader, record.contacts, `${path}.contacts`);
+	if (
+		template === null ||
+		name === null ||
+		origin === null ||
+		yaw === null ||
+		frame === null ||
+		!frameReference.ok ||
+		entityIds === null ||
+		clusterId === null ||
+		contacts === null
+	) {
+		return null;
+	}
+	return {
+		kind: 'place-group-copy',
+		template,
+		name,
+		origin,
+		yaw,
+		frame,
+		frameReference: frameReference.value,
+		entityIds,
+		clusterId,
+		contacts,
+	};
+}
+
+function readGroupTemplateWithReader(
+	reader: ShapeReader,
+	raw: unknown,
+	path: string,
+): GroupTemplate | null {
+	const parsed = readGroupTemplate(raw);
+	if (parsed.success) return parsed.template;
+	for (const issue of parsed.issues) {
+		reader.problem(`${path}${issue.path.slice(1)}`, issue.code, issue.message);
+	}
+	return null;
+}
+
+function readGroupCopyOrigin(
+	reader: ShapeReader,
+	raw: unknown,
+	path: string,
+): GroupCopyOriginPayload | null {
+	const record = reader.object(raw, path, ['kind', 'worldXZ', 'position', 'supportChoice']);
+	if (record === null) return null;
+	const kind = reader.tag(record.kind, `${path}.kind`, ['support', 'overhead', 'wall']);
+	if (kind === null) return null;
+	const choice = readSupportChoice(reader, record.supportChoice, `${path}.supportChoice`);
+	if (choice === undefined) return null;
+	if (kind === 'wall') {
+		if (record.worldXZ !== undefined) {
+			reader.problem(`${path}.worldXZ`, 'unknown-key', `${path}.worldXZ belongs to a floor origin`);
+		}
+		if (choice.choice !== undefined) {
+			reader.problem(
+				`${path}.supportChoice`,
+				'unknown-key',
+				`${path}.supportChoice belongs to a floor origin`,
+			);
+		}
+		const position = reader.vector3(record.position, `${path}.position`);
+		return position === null ? null : { kind: 'wall', position };
+	}
+	if (record.position !== undefined) {
+		reader.problem(`${path}.position`, 'unknown-key', `${path}.position belongs to a wall origin`);
+	}
+	const worldXZ = readPoint(reader, record.worldXZ, `${path}.worldXZ`);
+	if (worldXZ === null) return null;
+	return {
+		kind: kind as 'support' | 'overhead',
+		worldXZ,
+		...(choice.choice === undefined ? {} : { choice: choice.choice }),
+	};
+}
+
+function readGroupCopyContacts(
+	reader: ShapeReader,
+	input: unknown,
+	path: string,
+): readonly (number | null)[] | null {
+	if (!Array.isArray(input)) {
+		reader.problem(path, 'not-an-array', `${path} must be an array of member contacts`);
+		return null;
+	}
+	const contacts: (number | null)[] = [];
+	for (const [index, value] of input.entries()) {
+		if (value === null) {
+			contacts.push(null);
+			continue;
+		}
+		const contact = reader.number(value, `${path}[${index}]`);
+		if (contact === null) return null;
+		contacts.push(contact);
+	}
+	return contacts;
 }
 
 function readRigLight(reader: ShapeReader, raw: unknown, path: string) {
